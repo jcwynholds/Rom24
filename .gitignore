@@ -1,3 +1,5 @@
 src/*.o
 player/*
 log/*
+src/rom
+src/Makefile.*
