@@ -1,3 +1,15 @@
+== Jan's Linux Merc Diku ==
+
+This github holds some minor tweaks to get Merc Diku Rom24 to build on a
+modern linux.  All other platforms would be welcomed if maintainers step up.
+
+Plans thus far:
+
+- transfer to cmake or other xplat build system
+- find other areas, spells + extensions from others
+- write area / player / room / object -> yaml converters (or json?)
+- load definitions from yaml
+
 <This is the original readme file from Merc relase 2.1>
 Merc Release 2.1
 Sunday 01 August 1993
