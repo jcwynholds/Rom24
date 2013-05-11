@@ -1,0 +1,269 @@
+#PLAYER
+Name Dude~
+Id   1368296460
+LogO 1368299139
+Vers 5
+Prom <%hhp %mm %vmv> ~
+Race human~
+Sex  1
+Cla  0
+Levl 40
+Plyd 1990
+Not  0 0 0 0 0
+Scro 22
+Room 3019
+HMV  5064 5064 6047 6047 3289 6066
+Gold 10000
+Silv 6
+Exp  2051
+Act  EFQ
+Comm NOQ
+Pos  8
+Prac 159
+Trai 130
+Save  -1
+Alig  750
+Hit   1
+ACs 85 84 84 99
+Wimp  4
+Attr 20 25 25 25 25
+AMod 0 0 0 0 0
+Pass Du730Lq4qIE8.~
+Titl  the Mage Hero~
+Pnts 40
+TSex 1
+LLev 0
+HMVP 5064 6047 6066
+Cnd  0 2 43 16
+Sk 99 'acid blast'
+Sk 99 'armor'
+Sk 99 'blindness'
+Sk 99 'burning hands'
+Sk 99 'call lightning'
+Sk 99 'calm'
+Sk 99 'cancellation'
+Sk 99 'chain lightning'
+Sk 99 'change sex'
+Sk 99 'charm person'
+Sk 99 'chill touch'
+Sk 99 'colour spray'
+Sk 99 'control weather'
+Sk 99 'curse'
+Sk 99 'detect evil'
+Sk 99 'detect good'
+Sk 99 'detect hidden'
+Sk 99 'detect invis'
+Sk 99 'detect magic'
+Sk 99 'detect poison'
+Sk 99 'dispel magic'
+Sk 99 'energy drain'
+Sk 99 'faerie fire'
+Sk 99 'faerie fog'
+Sk 99 'farsight'
+Sk 99 'fireball'
+Sk 99 'fireproof'
+Sk 99 'fly'
+Sk 99 'gate'
+Sk 99 'giant strength'
+Sk 99 'haste'
+Sk 99 'identify'
+Sk 99 'infravision'
+Sk 99 'invisibility'
+Sk 99 'know alignment'
+Sk 99 'lightning bolt'
+Sk 99 'locate object'
+Sk 99 'magic missile'
+Sk 99 'mass invis'
+Sk 99 'nexus'
+Sk 99 'pass door'
+Sk 99 'plague'
+Sk 99 'poison'
+Sk 99 'portal'
+Sk 99 'protection evil'
+Sk 99 'protection good'
+Sk 99 'refresh'
+Sk 99 'sanctuary'
+Sk 99 'shield'
+Sk 99 'shocking grasp'
+Sk 99 'sleep'
+Sk 99 'slow'
+Sk 99 'stone skin'
+Sk 99 'summon'
+Sk 99 'teleport'
+Sk 99 'ventriloquate'
+Sk 99 'weaken'
+Sk 99 'word of recall'
+Sk 96 'dagger'
+Sk 99 'lore'
+Sk 99 'scrolls'
+Sk 99 'staves'
+Sk 99 'wands'
+Sk 99 'recall'
+Gr 'rom basics'
+Gr 'mage basics'
+Gr 'mage default'
+Gr 'beguiling'
+Gr 'combat'
+Gr 'detection'
+Gr 'enhancement'
+Gr 'illusion'
+Gr 'maladictions'
+Gr 'protective'
+Gr 'transportation'
+Gr 'weather'
+End
+
+#O
+Vnum 3716
+Nest 0
+Cond 0
+Wear 0
+Cost 0
+Val  0 0 168 0 0
+End
+
+#O
+Vnum 3703
+Nest 0
+Cond 0
+Wear 5
+Cost 0
+End
+
+#O
+Vnum 3701
+Nest 0
+Cond 0
+Wear 16
+Cost 210
+End
+
+#O
+Vnum 3704
+Nest 0
+Cond 0
+Wear 11
+Cost 0
+End
+
+#O
+Vnum 3162
+Nest 0
+Cond 0
+Wear -1
+Cost 500
+End
+
+#O
+Vnum 3705
+Nest 0
+Cond 0
+Wear 4
+Cost 72
+End
+
+#O
+Vnum 3705
+Nest 0
+Cond 0
+Wear 3
+Cost 72
+End
+
+#O
+Vnum 3708
+Nest 0
+Cond 0
+Wear 8
+Cost 72
+End
+
+#O
+Vnum 3713
+Nest 0
+Cond 0
+Wear 14
+Cost 48
+End
+
+#O
+Vnum 3706
+Nest 0
+Cond 0
+Wear 6
+Cost 72
+End
+
+#O
+Vnum 3711
+Nest 0
+Cond 0
+Wear 12
+Cost 72
+End
+
+#O
+Vnum 3707
+Nest 0
+Cond 0
+Wear 7
+Cost 72
+End
+
+#O
+Vnum 3712
+Nest 0
+Cond 0
+Wear 13
+Cost 72
+End
+
+#O
+Vnum 3707
+Nest 0
+Cond 0
+Wear -1
+Cost 72
+End
+
+#O
+Vnum 3712
+Nest 0
+Cond 0
+Wear -1
+Cost 72
+End
+
+#O
+Vnum 3707
+Nest 0
+Cond 0
+Wear -1
+Cost 72
+End
+
+#O
+Vnum 3712
+Nest 0
+Cond 0
+Wear -1
+Cost 72
+End
+
+#O
+Vnum 3707
+Nest 0
+Cond 0
+Wear -1
+Cost 72
+End
+
+#O
+Vnum 3712
+Nest 0
+Cond 0
+Wear -1
+Cost 72
+End
+
+#END
