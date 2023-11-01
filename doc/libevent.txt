@@ -1,0 +1,10 @@
+Main goal 
+
+Use libevent bufferevent instead of select
+main loop can go unblocked and just respond to bufferevents iso looping through all file descriptors
+
+socket, structs and file descriptor definitions in merc.h 
+
+read/write socket calls to evbuffer_readln / evbuffer_add in comm.c
+bind listen accept in comm.C
+main unix loop in comm.c
