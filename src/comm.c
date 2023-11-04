@@ -100,22 +100,22 @@ const    char    go_ahead_str   [] = { IAC, GA, '\0' };
 
 #if !defined(ntohl)
 int    accept        args( ( int s, struct sockaddr *addr, int *addrlen ) );
-int    bind        args( ( int s, struct sockaddr *name, int namelen ) );
-int    close        args( ( int fd ) );
-int    fcntl        args( ( int fd, int cmd, int arg ) );
-int    getpeername    args( ( int s, struct sockaddr *name, int *namelen ) );
-int    getsockname    args( ( int s, struct sockaddr *name, int *namelen ) );
-int    gettimeofday    args( ( struct timeval *tp, struct timezone *tz ) );
-uint16_t    htons        args( ( uint16_t hostshort ) );
+int    bind          args( ( int s, struct sockaddr *name, int namelen ) );
+int    close         args( ( int fd ) );
+int    fcntl         args( ( int fd, int cmd, int arg ) );
+int    getpeername   args( ( int s, struct sockaddr *name, int *namelen ) );
+int    getsockname   args( ( int s, struct sockaddr *name, int *namelen ) );
+int    gettimeofday  args( ( struct timeval *tp, struct timezone *tz ) );
+uint16_t    htons    args( ( uint16_t hostshort ) );
 int    listen        args( ( int s, int backlog ) );
-uint32_t    ntohl        args( ( uint32_t hostlong ) );
-int    read        args( ( int fd, char *buf, int nbyte ) );
+uint32_t    ntohl    args( ( uint32_t hostlong ) );
+int    read          args( ( int fd, char *buf, int nbyte ) );
 int    select        args( ( int width, fd_set *readfds, fd_set *writefds,
                 fd_set *exceptfds, struct timeval *timeout ) );
 int    setsockopt    args( ( int s, int level, int optname, void *optval,
                 int optlen ) );
 int    socket        args( ( int domain, int type, int protocol ) );
-int    write        args( ( int fd, char *buf, int nbyte ) );
+int    write         args( ( int fd, char *buf, int nbyte ) );
 #endif
 
 /*
@@ -138,18 +138,18 @@ bool    read_from_descriptor args( ( DESCRIPTOR_DATA *d ) );
 bool    write_to_descriptor  args( ( int desc, char *txt, int length ) );
 
 /*
- * Other local functions (OS-independent).
+ * Other local functions
  */
-bool    check_parse_name    args( ( char *name ) );
-bool    check_reconnect        args( ( DESCRIPTOR_DATA *d, char *name,
+bool    check_parse_name   args( ( char *name ) );
+bool    check_reconnect    args( ( DESCRIPTOR_DATA *d, char *name,
                     bool fConn ) );
-bool    check_playing        args( ( DESCRIPTOR_DATA *d, char *name ) );
-int    main            args( ( int argc, char **argv ) );
-void    nanny            args( ( DESCRIPTOR_DATA *d, char *argument ) );
-bool    process_output        args( ( DESCRIPTOR_DATA *d, bool fPrompt ) );
-void    read_from_buffer    args( ( DESCRIPTOR_DATA *d ) );
+bool    check_playing      args( ( DESCRIPTOR_DATA *d, char *name ) );
+int    main                args( ( int argc, char **argv ) );
+void    nanny              args( ( DESCRIPTOR_DATA *d, char *argument ) );
+bool    process_output     args( ( DESCRIPTOR_DATA *d, bool fPrompt ) );
+void    read_from_buffer   args( ( DESCRIPTOR_DATA *d ) );
 void    stop_idling        args( ( CHAR_DATA *ch ) );
-void    bust_a_prompt           args( ( CHAR_DATA *ch ) );
+void    bust_a_prompt      args( ( CHAR_DATA *ch ) );
 
 
 int main( int argc, char **argv )
@@ -218,8 +218,6 @@ int main( int argc, char **argv )
     exit( 0 );
     return 0;
 }
-
-
 
 int init_socket( int port )
 {
