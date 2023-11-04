@@ -3,3 +3,4 @@ player/*
 log/*
 src/rom
 src/Makefile.*
+area/shutdown.txt
