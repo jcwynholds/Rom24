@@ -247,6 +247,12 @@ Thanks to Ezra for drawing the originals of several maps on ROM.
 .
 THIS IS A MUD BASED ON.....
 
+
+                                evROM Version 0.1 alpha
+               This is a derivitive work of ROM Version 2.4 beta.
+               A DikuMUD clone with all networking rewritten to
+               use libevent instead of the musty and crusty select.
+
                                 ROM Version 2.4 beta
 
                Original DikuMUD by Hans Staerfeldt, Katja Nyboe,
