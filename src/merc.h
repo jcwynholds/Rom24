@@ -267,6 +267,7 @@ struct	descriptor_data
     int			outtop;
     char *		showstr_head;
     char *		showstr_point;
+    struct      bufferevent  *bev;
 };
 
 

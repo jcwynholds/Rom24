@@ -124,7 +124,6 @@ const	struct	cmd_type	cmd_table	[] =
     { "info",           do_groups,      POS_SLEEPING,    0,  LOG_NORMAL, 1 },
     { "motd",		do_motd,	POS_DEAD,        0,  LOG_NORMAL, 1 },
     { "news",		do_news,	POS_DEAD,	 0,  LOG_NORMAL, 1 },
-    { "read",		do_read,	POS_RESTING,	 0,  LOG_NORMAL, 1 },
     { "report",		do_report,	POS_RESTING,	 0,  LOG_NORMAL, 1 },
     { "rules",		do_rules,	POS_DEAD,	 0,  LOG_NORMAL, 1 },
     { "score",		do_score,	POS_DEAD,	 0,  LOG_NORMAL, 1 },

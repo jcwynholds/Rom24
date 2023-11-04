@@ -54,6 +54,7 @@
 #include <stdlib.h>
 #include <time.h>
 
+/* libevent */
 #include <event2/event.h>
 #include <event2/buffer.h>
 #include <event2/bufferevent.h>
@@ -99,24 +100,27 @@ const    char    go_ahead_str   [] = { IAC, GA, '\0' };
 #endif
 
 #if !defined(ntohl)
-int    accept        args( ( int s, struct sockaddr *addr, int *addrlen ) );
-int    bind          args( ( int s, struct sockaddr *name, int namelen ) );
-int    close         args( ( int fd ) );
-int    fcntl         args( ( int fd, int cmd, int arg ) );
-int    getpeername   args( ( int s, struct sockaddr *name, int *namelen ) );
-int    getsockname   args( ( int s, struct sockaddr *name, int *namelen ) );
-int    gettimeofday  args( ( struct timeval *tp, struct timezone *tz ) );
-uint16_t    htons    args( ( uint16_t hostshort ) );
-int    listen        args( ( int s, int backlog ) );
-uint32_t    ntohl    args( ( uint32_t hostlong ) );
-int    read          args( ( int fd, char *buf, int nbyte ) );
-int    select        args( ( int width, fd_set *readfds, fd_set *writefds,
+int      accept       args( ( int s, struct sockaddr *addr, int *addrlen ) );
+int      bind         args( ( int s, struct sockaddr *name, int namelen ) );
+int      close        args( ( int fd ) );
+int      fcntl        args( ( int fd, int cmd, int arg ) );
+int      getpeername  args( ( int s, struct sockaddr *name, int *namelen ) );
+int      getsockname  args( ( int s, struct sockaddr *name, int *namelen ) );
+int      gettimeofday args( ( struct timeval *tp, struct timezone *tz ) );
+uint16_t htons        args( ( uint16_t hostshort ) );
+int      listen       args( ( int s, int backlog ) );
+uint32_t ntohl        args( ( uint32_t hostlong ) );
+int    read           args( ( int fd, char *buf, int nbyte ) );
+int    select         args( ( int width, fd_set *readfds, fd_set *writefds,
                 fd_set *exceptfds, struct timeval *timeout ) );
-int    setsockopt    args( ( int s, int level, int optname, void *optval,
+int    setsockopt     args( ( int s, int level, int optname, void *optval,
                 int optlen ) );
-int    socket        args( ( int domain, int type, int protocol ) );
-int    write         args( ( int fd, char *buf, int nbyte ) );
+int    socket         args( ( int domain, int type, int protocol ) );
+int    write          args( ( int fd, char *buf, int nbyte ) );
 #endif
+/* libevent */
+void   do_read(evutil_socket_t fd, short events, void *arg);
+void   do_write(evutil_socket_t fd, short events, void *arg);
 
 /*
  * Global variables.
@@ -132,7 +136,7 @@ char                str_boot_time[MAX_INPUT_LENGTH];
 time_t              current_time;    /* time of this pulse */    
 
 void    game_loop_unix       args( ( int control ) );
-int     init_socket          args( ( int port ) );
+evutil_socket_t     init_socket          args( ( int port ) );
 void    init_descriptor      args( ( int control ) );
 bool    read_from_descriptor args( ( DESCRIPTOR_DATA *d ) );
 bool    write_to_descriptor  args( ( int desc, char *txt, int length ) );
@@ -144,7 +148,7 @@ bool    check_parse_name   args( ( char *name ) );
 bool    check_reconnect    args( ( DESCRIPTOR_DATA *d, char *name,
                     bool fConn ) );
 bool    check_playing      args( ( DESCRIPTOR_DATA *d, char *name ) );
-int    main                args( ( int argc, char **argv ) );
+int     main               args( ( int argc, char **argv ) );
 void    nanny              args( ( DESCRIPTOR_DATA *d, char *argument ) );
 bool    process_output     args( ( DESCRIPTOR_DATA *d, bool fPrompt ) );
 void    read_from_buffer   args( ( DESCRIPTOR_DATA *d ) );
@@ -157,7 +161,8 @@ int main( int argc, char **argv )
     struct timeval now_time;
     int port;
 
-    int control;
+    evutil_socket_t control;
+    struct event_base *base;
 
     /*
      * Memory debugging if needed.
@@ -200,6 +205,13 @@ int main( int argc, char **argv )
     }
     }
 
+    base = event_base_new();
+	if (!base)
+	{
+		fprintf( stderr, "event_base_new() failed.\n" );
+		exit( 1 );
+	}
+
     /*
      * Run the game.
      */
@@ -219,43 +231,26 @@ int main( int argc, char **argv )
     return 0;
 }
 
-int init_socket( int port )
+evutil_socket_t init_socket( int port )
 {
     static struct sockaddr_in sa_zero;
     struct sockaddr_in sa;
     int x = 1;
-    int fd;
+    evutil_socket_t fd;
 
     if ( ( fd = socket( AF_INET, SOCK_STREAM, 0 ) ) < 0 )
     {
     perror( "Init_socket: socket" );
     exit( 1 );
     }
+	evutil_make_socket_nonblocking( fd );
 
     if ( setsockopt( fd, SOL_SOCKET, SO_REUSEADDR,
     (char *) &x, sizeof(x) ) < 0 )
     {
     perror( "Init_socket: SO_REUSEADDR" );
-    close(fd);
     exit( 1 );
     }
-
-#if defined(SO_DONTLINGER) && !defined(SYSV)
-    {
-    struct    linger    ld;
-
-    ld.l_onoff  = 1;
-    ld.l_linger = 1000;
-
-    if ( setsockopt( fd, SOL_SOCKET, SO_DONTLINGER,
-    (char *) &ld, sizeof(ld) ) < 0 )
-    {
-        perror( "Init_socket: SO_DONTLINGER" );
-        close(fd);
-        exit( 1 );
-    }
-    }
-#endif
 
     sa            = sa_zero;
     sa.sin_family   = AF_INET;
@@ -264,7 +259,6 @@ int init_socket( int port )
     if ( bind( fd, (struct sockaddr *) &sa, sizeof(sa) ) < 0 )
     {
     perror("Init socket: bind" );
-    close(fd);
     exit(1);
     }
 
@@ -272,7 +266,6 @@ int init_socket( int port )
     if ( listen( fd, 3 ) < 0 )
     {
     perror("Init socket: listen");
-    close(fd);
     exit(1);
     }
 

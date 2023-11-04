@@ -6,5 +6,17 @@ main loop can go unblocked and just respond to bufferevents iso looping through 
 socket, structs and file descriptor definitions in merc.h 
 
 read/write socket calls to evbuffer_readln / evbuffer_add in comm.c
-bind listen accept in comm.C
-main unix loop in comm.c
+event base 
+read event
+write event
+how to keep the main loop with events
+where to put the libevent structs
+ ->   in the big DESCRIPTOR_DATA
+    or in a new struct
+
+use the read_from_* to be event callback
+use the write_to_* to be event callback
+main loop ticks time and update_handler
+
+let main loop run, have events in descriptor data
+struct and callbacks for read/write
