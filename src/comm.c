@@ -149,13 +149,14 @@ time_t              current_time;    /* time of this pulse */
 
 void    game_loop_unix       args( ( int control ) );
 evutil_socket_t init_socket  args( ( int port ) );
-void    init_descriptor      args( ( int control ) );
 bool    read_from_descriptor args( ( DESCRIPTOR_DATA *d ) );
 bool    write_to_descriptor  args( ( int desc, char *txt, int length ) );
 
 void    do_accept            args( (evutil_socket_t listener, short event, 
                                      void *arg) );
-void    errorcb              args( (struct bufferevent *bev, short error, void *ctx) );
+void    errorcb              args( (struct bufferevent *bev, short error, void *arg ) );
+void    readcb               args( (struct bufferevent *bev, void *arg ) );
+void    writecb              args( (struct bufferevent *bev, void *arg ) );
 /*
  * Other local functions
  */
@@ -253,22 +254,34 @@ int main( int argc, char **argv )
     return 0;
 }
 
-void errorcb(struct bufferevent *bev, short error, void *ctx)
+void readcb(struct bufferevent *bev, void *arg )
 {
+	struct descriptor_data *d = (struct descriptor_data *)arg;
+	strcat( bev->input, d->inbuf );
+	d->character->timer = 0;
+}
+
+void writecb(struct bufferevent *bev, void *arg )
+{
+	//no op
+}
+
+void errorcb(struct bufferevent *bev, short error, void *arg )
+{
+	struct descriptor_data *d = (struct descriptor_data *)arg;
     if (error & BEV_EVENT_EOF) {
         /* connection has been closed, do any clean up here */
 		log_string( "error: BEV_EVENT_EOF" );
-        /* ... */
+		close_socket( d );
     } else if (error & BEV_EVENT_ERROR) {
         /* check errno to see what error occurred */
 		log_string( "error: BEV_EVENT_ERROR" );
-        /* ... */
+        sprintf( log_buf, "Err:  %d", error );
+        log_string( log_buf );
     } else if (error & BEV_EVENT_TIMEOUT) {
-        /* must be a timeout event handle, handle it */
 		log_string( "error: BEV_EVENT_TIMEOUT" );
-        /* ... */
+		close_socket( d );
     }
-    bufferevent_free(bev);
 }
 
 void do_accept(evutil_socket_t listener, short event, void *arg)
@@ -414,7 +427,6 @@ evutil_socket_t init_socket( int port )
 
 void game_loop_unix( evutil_socket_t control )
 {
-    static struct timeval null_time;
     struct timeval last_time;
 
     signal( SIGPIPE, SIG_IGN );
@@ -424,84 +436,22 @@ void game_loop_unix( evutil_socket_t control )
     /* Main loop */
     while ( !merc_down )
     {
-    fd_set in_set;
-    fd_set out_set;
-    fd_set exc_set;
     DESCRIPTOR_DATA *d;
-    int maxdesc;
 
 #if defined(MALLOC_DEBUG)
     if ( malloc_verify( ) != 1 )
         abort( );
 #endif
 
-    /*
-     * Poll all active descriptors.
-     */
-    FD_ZERO( &in_set  );
-    FD_ZERO( &out_set );
-    FD_ZERO( &exc_set );
-    FD_SET( control, &in_set );
-    maxdesc    = control;
-    for ( d = descriptor_list; d; d = d->next )
-    {
-        maxdesc = UMAX( maxdesc, d->descriptor );
-        FD_SET( d->descriptor, &in_set  );
-        FD_SET( d->descriptor, &out_set );
-        FD_SET( d->descriptor, &exc_set );
-    }
-
-    if ( select( maxdesc+1, &in_set, &out_set, &exc_set, &null_time ) < 0 )
-    {
-        perror( "Game_loop: select: poll" );
-        exit( 1 );
-    }
-
-    /*
-     * New connection?
-     */
-    if ( FD_ISSET( control, &in_set ) )
-        init_descriptor( control );
-
-    /*
-     * Kick out the freaky folks.
-     */
+	// Don't need any of this loop except
+	// daze decrement
+	// update_handler
+	// clock sync
     for ( d = descriptor_list; d != NULL; d = d_next )
     {
         d_next = d->next;   
-        if ( FD_ISSET( d->descriptor, &exc_set ) )
-        {
-        FD_CLR( d->descriptor, &in_set  );
-        FD_CLR( d->descriptor, &out_set );
-        if ( d->character && d->connected == CON_PLAYING)
-            save_char_obj( d->character );
-        d->outtop    = 0;
-        close_socket( d );
-        }
-    }
-
-    /*
-     * Process input.
-     */
-    for ( d = descriptor_list; d != NULL; d = d_next )
-    {
-        d_next    = d->next;
         d->fcommand    = FALSE;
 
-        if ( FD_ISSET( d->descriptor, &in_set ) )
-        {
-        if ( d->character != NULL )
-            d->character->timer = 0;
-        if ( !read_from_descriptor( d ) )
-        {
-            FD_CLR( d->descriptor, &out_set );
-            if ( d->character != NULL && d->connected == CON_PLAYING)
-            save_char_obj( d->character );
-            d->outtop    = 0;
-            close_socket( d );
-            continue;
-        }
-        }
 
         if (d->character != NULL && d->character->daze > 0)
         --d->character->daze;
@@ -512,31 +462,12 @@ void game_loop_unix( evutil_socket_t control )
         continue;
         }
 
-        read_from_buffer( d );
-        if ( d->incomm[0] != '\0' )
-        {
-        d->fcommand    = TRUE;
-        stop_idling( d->character );
-
-        if (d->showstr_point)
-            show_string(d,d->incomm);
-        else if ( d->connected == CON_PLAYING )
-            substitute_alias( d, d->incomm );
-        else
-            nanny( d, d->incomm );
-
-        d->incomm[0]    = '\0';
-        }
     }
-
-
 
     /*
      * Autonomous game motion.
      */
     update_handler( );
-
-
 
     /*
      * Output.
@@ -545,8 +476,7 @@ void game_loop_unix( evutil_socket_t control )
     {
         d_next = d->next;
 
-        if ( ( d->fcommand || d->outtop > 0 )
-        &&   FD_ISSET(d->descriptor, &out_set) )
+        if ( d->fcommand || d->outtop > 0 ) 
         {
         if ( !process_output( d, TRUE ) )
         {
@@ -557,8 +487,6 @@ void game_loop_unix( evutil_socket_t control )
         }
         }
     }
-
-
 
     /*
      * Synchronize to a clock.
@@ -602,109 +530,6 @@ void game_loop_unix( evutil_socket_t control )
 
     gettimeofday( &last_time, NULL );
     current_time = (time_t) last_time.tv_sec;
-    }
-
-    return;
-}
-
-
-void init_descriptor( int control )
-{
-    char buf[MAX_STRING_LENGTH];
-    DESCRIPTOR_DATA *dnew;
-    struct sockaddr_in sock;
-    struct hostent *from;
-    int desc;
-    socklen_t size;
-
-
-    size = sizeof(sock);
-    getsockname( control, (struct sockaddr *) &sock, &size );
-    if ( ( desc = accept( control, (struct sockaddr *) &sock, &size) ) < 0 )
-    {
-    perror( "New_descriptor: accept" );
-    return;
-    }
-
-#if !defined(FNDELAY)
-#define FNDELAY O_NONBLOCK
-#endif
-
-    if ( fcntl( desc, F_SETFL, FNDELAY ) == -1 )
-    {
-    perror( "New_descriptor: fcntl: FNDELAY" );
-    return;
-    }
-
-    /*
-     * Cons a new descriptor.
-     */
-    dnew = new_descriptor();
-
-    dnew->descriptor    = desc;
-    dnew->connected    = CON_GET_NAME;
-    dnew->showstr_head    = NULL;
-    dnew->showstr_point = NULL;
-    dnew->outsize    = 2000;
-    dnew->outbuf    = alloc_mem( dnew->outsize );
-
-    size = sizeof(sock);
-    if ( getpeername( desc, (struct sockaddr *) &sock, &size ) < 0 )
-    {
-    perror( "New_descriptor: getpeername" );
-    dnew->host = str_dup( "(unknown)" );
-    }
-    else
-    {
-    /*
-     * Would be nice to use inet_ntoa here but it takes a struct arg,
-     * which ain't very compatible between gcc and system libraries.
-     */
-    int addr;
-
-    addr = ntohl( sock.sin_addr.s_addr );
-    sprintf( buf, "%d.%d.%d.%d",
-        ( addr >> 24 ) & 0xFF, ( addr >> 16 ) & 0xFF,
-        ( addr >>  8 ) & 0xFF, ( addr       ) & 0xFF
-        );
-    sprintf( log_buf, "Sock.sinaddr:  %s", buf );
-    log_string( log_buf );
-    from = gethostbyaddr( (char *) &sock.sin_addr,
-        sizeof(sock.sin_addr), AF_INET );
-    dnew->host = str_dup( from ? from->h_name : buf );
-    }
-    
-    /*
-     * Swiftest: I added the following to ban sites.  I don't
-     * endorse banning of sites, but Copper has few descriptors now
-     * and some people from certain sites keep abusing access by
-     * using automated 'autodialers' and leaving connections hanging.
-     *
-     * Furey: added suffix check by request of Nickel of HiddenWorlds.
-     */
-    if ( check_ban(dnew->host,BAN_ALL))
-    {
-    write_to_descriptor( desc,
-        "Your site has been banned from this mud.\n\r", 0 );
-    close( desc );
-    free_descriptor(dnew);
-    return;
-    }
-    /*
-     * Init descriptor data.
-     */
-    dnew->next            = descriptor_list;
-    descriptor_list        = dnew;
-
-    /*
-     * Send the greeting.
-     */
-    {
-    extern char * help_greeting;
-    if ( help_greeting[0] == '.' )
-        write_to_buffer( dnew, help_greeting+1, 0 );
-    else
-        write_to_buffer( dnew, help_greeting  , 0 );
     }
 
     return;
@@ -772,6 +597,7 @@ void close_socket( DESCRIPTOR_DATA *dclose )
     }
 
     close( dclose->descriptor );
+	bufferevent_free( dclose->evb );
     free_descriptor(dclose);
     return;
 }

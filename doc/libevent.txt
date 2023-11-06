@@ -23,15 +23,10 @@ how to check which descriptor_data belongs
     to the bufferevent 
     xxxxxx nonono state struct with descriptor_data and bufferevent
 
+read_from_descriptor
+read_from_buffer
 read event 
-    allocates buffer 
-    pops bytes from event to buffer
-    copies to d->outbuf
-
-write event
-    allocates buffer
-    pops bytes from event to buf
-    copies to d->outbuf
+    copies to d->inbuf
 
 xxxwhere to put the libevent structs
  ->   in the big DESCRIPTOR_DATA
@@ -40,7 +35,6 @@ xxxwhere to put the libevent structs
 
 
 use the read_from_* to be event callback
-use the write_to_* to be event callback
 main loop ticks time and update_handler
 
 let main loop run, have events in descriptor data
