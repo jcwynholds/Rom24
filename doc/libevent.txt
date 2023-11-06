@@ -7,12 +7,37 @@ socket, structs and file descriptor definitions in merc.h
 
 read/write socket calls to evbuffer_readln / evbuffer_add in comm.c
 event base 
+
+
+-> init_descriptor goes to accept callback
+
+
 read event
 write event
 how to keep the main loop with events
-where to put the libevent structs
+remove select and FD_* polling 
+add event dispatching and callback definitions
+how to check which descriptor_data belongs
+    each callback passes descriptor_data as arg
+    when constructed 
+    to the bufferevent 
+    xxxxxx nonono state struct with descriptor_data and bufferevent
+
+read event 
+    allocates buffer 
+    pops bytes from event to buffer
+    copies to d->outbuf
+
+write event
+    allocates buffer
+    pops bytes from event to buf
+    copies to d->outbuf
+
+xxxwhere to put the libevent structs
  ->   in the big DESCRIPTOR_DATA
-    or in a new struct
+ handling socket close - save_char_obj
+ save, quit and other close() from act_*
+
 
 use the read_from_* to be event callback
 use the write_to_* to be event callback

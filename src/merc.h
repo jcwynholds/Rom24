@@ -243,19 +243,18 @@ struct	weather_data
 #define CON_BREAK_CONNECT		15
 
 
-
 /*
  * Descriptor (channel) structure.
  */
 struct	descriptor_data
 {
-    DESCRIPTOR_DATA *	next;
-    DESCRIPTOR_DATA *	snoop_by;
-    CHAR_DATA *		character;
-    CHAR_DATA *		original;
+    DESCRIPTOR_DATA * next;
+    DESCRIPTOR_DATA * snoop_by;
+    CHAR_DATA *		  character;
+    CHAR_DATA *		  original;
+    int               descriptor;
     bool		valid;
     char *		host;
-    sh_int		descriptor;
     sh_int		connected;
     bool		fcommand;
     char		inbuf		[4 * MAX_INPUT_LENGTH];
@@ -267,7 +266,7 @@ struct	descriptor_data
     int			outtop;
     char *		showstr_head;
     char *		showstr_point;
-    struct      bufferevent  *bev;
+    struct      bufferevent *evb;
 };
 
 

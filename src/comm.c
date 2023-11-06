@@ -28,6 +28,18 @@
 *    ROM license, in the file Rom24/doc/rom.license               *
 ***************************************************************************/
 
+/***************************************************************************
+ * evROM (libevent based ROM)
+ * move to async for networking
+ * removed 'do_read' due to name collision
+ * 
+ * 
+ * 
+ *
+***************************************************************************/
+
+
+
 /*
  * This file contains all of the OS-dependent stuff:
  *   startup, signals, BSD sockets for tcp/ip, i/o, timing.
@@ -136,11 +148,14 @@ char                str_boot_time[MAX_INPUT_LENGTH];
 time_t              current_time;    /* time of this pulse */    
 
 void    game_loop_unix       args( ( int control ) );
-evutil_socket_t     init_socket          args( ( int port ) );
+evutil_socket_t init_socket  args( ( int port ) );
 void    init_descriptor      args( ( int control ) );
 bool    read_from_descriptor args( ( DESCRIPTOR_DATA *d ) );
 bool    write_to_descriptor  args( ( int desc, char *txt, int length ) );
 
+void    do_accept            args( (evutil_socket_t listener, short event, 
+                                     void *arg) );
+void    errorcb              args( (struct bufferevent *bev, short error, void *ctx) );
 /*
  * Other local functions
  */
@@ -163,6 +178,7 @@ int main( int argc, char **argv )
 
     evutil_socket_t control;
     struct event_base *base;
+	struct event *listener_event;
 
     /*
      * Memory debugging if needed.
@@ -217,6 +233,12 @@ int main( int argc, char **argv )
      */
 
     control = init_socket( port );
+
+    listener_event = event_new(base, control, EV_READ|EV_PERSIST, do_accept, (void*)base);
+    /*XXX check it */
+    event_add(listener_event, NULL);
+
+    event_base_dispatch(base);
     boot_db( );
     sprintf( log_buf, "ROM is ready to rock on port %d.", port );
     log_string( log_buf );
@@ -230,6 +252,123 @@ int main( int argc, char **argv )
     exit( 0 );
     return 0;
 }
+
+void errorcb(struct bufferevent *bev, short error, void *ctx)
+{
+    if (error & BEV_EVENT_EOF) {
+        /* connection has been closed, do any clean up here */
+		log_string( "error: BEV_EVENT_EOF" );
+        /* ... */
+    } else if (error & BEV_EVENT_ERROR) {
+        /* check errno to see what error occurred */
+		log_string( "error: BEV_EVENT_ERROR" );
+        /* ... */
+    } else if (error & BEV_EVENT_TIMEOUT) {
+        /* must be a timeout event handle, handle it */
+		log_string( "error: BEV_EVENT_TIMEOUT" );
+        /* ... */
+    }
+    bufferevent_free(bev);
+}
+
+void do_accept(evutil_socket_t listener, short event, void *arg)
+{
+    struct event_base *base = arg;
+
+    char buf[MAX_STRING_LENGTH];
+    DESCRIPTOR_DATA *dnew;
+    struct sockaddr_in sock;
+    socklen_t size = sizeof(sock);
+    struct hostent *from;
+    int desc;
+
+    if ( ( desc = accept( listener, (struct sockaddr *) &sock, &size) ) < 0 )
+    {
+    perror( "New_descriptor: accept" );
+    return;
+    } else if (desc > FD_SETSIZE) {
+    close(desc);
+	perror( "New_descriptor: fd > FD_SETSIZE" );
+	return;
+    }
+    // libevent
+    struct bufferevent *bev;
+    evutil_make_socket_nonblocking(desc);
+    bev = bufferevent_socket_new(base, desc, BEV_OPT_CLOSE_ON_FREE);
+
+    if ( fcntl( desc, F_SETFL, O_NONBLOCK ) == -1 )
+    {
+    perror( "New_descriptor: fcntl: O_NONBLOCK" );
+    return;
+    }
+
+    /*
+     * Cons a new descriptor.
+     */
+    dnew = new_descriptor();
+
+    dnew->descriptor    = desc;
+    dnew->connected    = CON_GET_NAME;
+    dnew->showstr_head    = NULL;
+    dnew->showstr_point = NULL;
+    dnew->outsize    = 2000;
+    dnew->outbuf    = alloc_mem( dnew->outsize );
+    dnew->host = str_dup( "(unknown)" );
+    /*
+     * Would be nice to use inet_ntoa here but it takes a struct arg,
+     * which ain't very compatible between gcc and system libraries.
+     */
+    int addr;
+
+    addr = ntohl( sock.sin_addr.s_addr );
+    sprintf( buf, "%d.%d.%d.%d",
+        ( addr >> 24 ) & 0xFF, ( addr >> 16 ) & 0xFF,
+        ( addr >>  8 ) & 0xFF, ( addr       ) & 0xFF
+        );
+    sprintf( log_buf, "Sock.sinaddr:  %s", buf );
+    log_string( log_buf );
+    from = gethostbyaddr( (char *) &sock.sin_addr,
+        sizeof(sock.sin_addr), AF_INET );
+    dnew->host = str_dup( from ? from->h_name : buf );
+
+    // libevent 
+    bufferevent_setcb(bev, readcb, writecb, errorcb, dnew );
+    bufferevent_setwatermark(bev, EV_READ, 0, MAX_STRING_LENGTH);
+    bufferevent_enable(bev, EV_READ|EV_WRITE);
+    /*
+     * Swiftest: I added the following to ban sites.  I don't
+     * endorse banning of sites, but Copper has few descriptors now
+     * and some people from certain sites keep abusing access by
+     * using automated 'autodialers' and leaving connections hanging.
+     *
+     * Furey: added suffix check by request of Nickel of HiddenWorlds.
+     */
+    if ( check_ban(dnew->host,BAN_ALL))
+    {
+    write_to_descriptor( desc,
+        "Your site has been banned from this mud.\n\r", 0 );
+    close( desc );
+    free_descriptor(dnew);
+    return;
+    }
+    /*
+     * Init descriptor data.
+     */
+    dnew->next            = descriptor_list;
+    descriptor_list        = dnew;
+
+    /*
+     * Send the greeting.
+     */
+    {
+    extern char * help_greeting;
+    if ( help_greeting[0] == '.' )
+        write_to_buffer( dnew, help_greeting+1, 0 );
+    else
+        write_to_buffer( dnew, help_greeting  , 0 );
+    }
+}
+
 
 evutil_socket_t init_socket( int port )
 {
@@ -253,8 +392,8 @@ evutil_socket_t init_socket( int port )
     }
 
     sa            = sa_zero;
-    sa.sin_family   = AF_INET;
-    sa.sin_port        = htons( port );
+    sa.sin_family = AF_INET;
+    sa.sin_port   = htons( port );
 
     if ( bind( fd, (struct sockaddr *) &sa, sizeof(sa) ) < 0 )
     {
@@ -273,7 +412,7 @@ evutil_socket_t init_socket( int port )
 }
 
 
-void game_loop_unix( int control )
+void game_loop_unix( evutil_socket_t control )
 {
     static struct timeval null_time;
     struct timeval last_time;
