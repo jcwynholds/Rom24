@@ -147,7 +147,7 @@ bool                newlock;         /* Game is newlocked        */
 char                str_boot_time[MAX_INPUT_LENGTH];
 time_t              current_time;    /* time of this pulse */    
 
-void    game_loop_unix       args( ( int control ) );
+void    game_tick            args( ( evutil_socket_t fd, short what, void *arg ) );
 evutil_socket_t init_socket  args( ( int port ) );
 bool    read_from_descriptor args( ( DESCRIPTOR_DATA *d ) );
 bool    write_to_descriptor  args( ( int desc, char *txt, int length ) );
@@ -180,6 +180,9 @@ int main( int argc, char **argv )
     evutil_socket_t control;
     struct event_base *base;
 	struct event *listener_event;
+	int qtr_sec = 100000 / PULSE_PER_SECOND;
+	struct event *game_tick_ev;
+	struct timeval tick_time = { 0, qtr_sec };
 
     /*
      * Memory debugging if needed.
@@ -187,7 +190,7 @@ int main( int argc, char **argv )
 #if defined(MALLOC_DEBUG)
     malloc_debug( 2 );
 #endif
-
+    fprintf( stderr, "main() start\n" );
     /*
      * Init time.
      */
@@ -232,18 +235,26 @@ int main( int argc, char **argv )
     /*
      * Run the game.
      */
+	game_tick_ev = event_new(base, -1, EV_PERSIST, game_tick, event_self_cbarg());
+	event_add(game_tick_ev, &tick_time);
+    fprintf( stderr, "main() init_socket\n" );
 
     control = init_socket( port );
+
+
+    fprintf( stderr, "main() event_new\n" );
 
     listener_event = event_new(base, control, EV_READ|EV_PERSIST, do_accept, (void*)base);
     /*XXX check it */
     event_add(listener_event, NULL);
 
-    event_base_dispatch(base);
+    fprintf( stderr, "main() boot_db\n" );
+
     boot_db( );
     sprintf( log_buf, "ROM is ready to rock on port %d.", port );
     log_string( log_buf );
-    game_loop_unix( control );
+
+    event_base_dispatch(base);
     close (control);
 
     /*
@@ -256,8 +267,19 @@ int main( int argc, char **argv )
 
 void readcb(struct bufferevent *bev, void *arg )
 {
-	struct descriptor_data *d = (struct descriptor_data *)arg;
-	strcat( bev->input, d->inbuf );
+	struct descriptor_data *d = arg;
+	char data[MAX_INPUT_LENGTH];
+	size_t n;
+
+	/* Read MAX_INPUT_LENGTH at a time */
+	for (;;) {
+		n = bufferevent_read(bev, data, sizeof(data));
+		if (n <= 0) {
+			/* Done. */
+			break;
+		}
+	}
+	strcat( d->inbuf, data );
 	d->character->timer = 0;
 }
 
@@ -268,7 +290,7 @@ void writecb(struct bufferevent *bev, void *arg )
 
 void errorcb(struct bufferevent *bev, short error, void *arg )
 {
-	struct descriptor_data *d = (struct descriptor_data *)arg;
+	struct descriptor_data *d = arg;
     if (error & BEV_EVENT_EOF) {
         /* connection has been closed, do any clean up here */
 		log_string( "error: BEV_EVENT_EOF" );
@@ -424,17 +446,15 @@ evutil_socket_t init_socket( int port )
     return fd;
 }
 
+// this will be timer callback once per pulse
+	// daze decrement
+	// update_handler
+	// process_output
 
-void game_loop_unix( evutil_socket_t control )
+void game_tick(evutil_socket_t fd, short what, void *arg)
 {
-    struct timeval last_time;
-
-    signal( SIGPIPE, SIG_IGN );
-    gettimeofday( &last_time, NULL );
-    current_time = (time_t) last_time.tv_sec;
-
     /* Main loop */
-    while ( !merc_down )
+    if ( !merc_down )
     {
     DESCRIPTOR_DATA *d;
 
@@ -443,16 +463,10 @@ void game_loop_unix( evutil_socket_t control )
         abort( );
 #endif
 
-	// Don't need any of this loop except
-	// daze decrement
-	// update_handler
-	// clock sync
     for ( d = descriptor_list; d != NULL; d = d_next )
     {
         d_next = d->next;   
         d->fcommand    = FALSE;
-
-
         if (d->character != NULL && d->character->daze > 0)
         --d->character->daze;
 
@@ -461,7 +475,6 @@ void game_loop_unix( evutil_socket_t control )
         --d->character->wait;
         continue;
         }
-
     }
 
     /*
@@ -488,48 +501,6 @@ void game_loop_unix( evutil_socket_t control )
         }
     }
 
-    /*
-     * Synchronize to a clock.
-     * Sleep( last_time + 1/PULSE_PER_SECOND - now ).
-     * Careful here of signed versus unsigned arithmetic.
-     */
-    {
-        struct timeval now_time;
-        long secDelta;
-        long usecDelta;
-
-        gettimeofday( &now_time, NULL );
-        usecDelta    = ((int) last_time.tv_usec) - ((int) now_time.tv_usec)
-            + 1000000 / PULSE_PER_SECOND;
-        secDelta    = ((int) last_time.tv_sec ) - ((int) now_time.tv_sec );
-        while ( usecDelta < 0 )
-        {
-        usecDelta += 1000000;
-        secDelta  -= 1;
-        }
-
-        while ( usecDelta >= 1000000 )
-        {
-        usecDelta -= 1000000;
-        secDelta  += 1;
-        }
-
-        if ( secDelta > 0 || ( secDelta == 0 && usecDelta > 0 ) )
-        {
-        struct timeval stall_time;
-
-        stall_time.tv_usec = usecDelta;
-        stall_time.tv_sec  = secDelta;
-        if ( select( 0, NULL, NULL, NULL, &stall_time ) < 0 )
-        {
-            perror( "Game_loop: select: stall" );
-            exit( 1 );
-        }
-        }
-    }
-
-    gettimeofday( &last_time, NULL );
-    current_time = (time_t) last_time.tv_sec;
     }
 
     return;
