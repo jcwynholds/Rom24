@@ -280,7 +280,7 @@ void readcb(struct bufferevent *bev, void *arg )
 		}
 	}
 	strcat( d->inbuf, data );
-	d->character->timer = 0;
+	// d->character->timer = 0;
 }
 
 void writecb(struct bufferevent *bev, void *arg )
@@ -475,6 +475,18 @@ void game_tick(evutil_socket_t fd, short what, void *arg)
         --d->character->wait;
         continue;
         }
+        if ( d->incomm[0] != '\0' )
+        {
+            d->fcommand     = TRUE;
+            stop_idling( d->character );
+
+            if ( d->connected == CON_PLAYING )
+                substitute_alias( d, d->incomm );
+            else
+                nanny( d, d->incomm );
+
+            d->incomm[0]    = '\0';
+        }
     }
 
     /*
@@ -567,8 +579,8 @@ void close_socket( DESCRIPTOR_DATA *dclose )
         bug( "Close_socket: dclose not found.", 0 );
     }
 
-    close( dclose->descriptor );
 	bufferevent_free( dclose->evb );
+    close( dclose->descriptor );
     free_descriptor(dclose);
     return;
 }

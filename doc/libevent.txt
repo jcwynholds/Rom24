@@ -4,38 +4,33 @@ Use libevent bufferevent instead of select
 main loop can go unblocked and just respond to bufferevents iso looping through all file descriptors
 
 socket, structs and file descriptor definitions in merc.h 
-
-read/write socket calls to evbuffer_readln / evbuffer_add in comm.c
-event base 
-
-
--> init_descriptor goes to accept callback
-
-
-read event
-write event
-how to keep the main loop with events
-remove select and FD_* polling 
-add event dispatching and callback definitions
-how to check which descriptor_data belongs
     each callback passes descriptor_data as arg
     when constructed 
     to the bufferevent 
-    xxxxxx nonono state struct with descriptor_data and bufferevent
-
 read_from_descriptor
 read_from_buffer
 read event 
     copies to d->inbuf
 
-xxxwhere to put the libevent structs
- ->   in the big DESCRIPTOR_DATA
- handling socket close - save_char_obj
- save, quit and other close() from act_*
+how to keep main loop and event_base_dispatch working
+   hand in hand
+
+   move game_loop_unix to event timer 
+
+    in main loop
+      daze decrement (based on tick)
+      update_handler
+      process_output
+      sync clock
 
 
-use the read_from_* to be event callback
-main loop ticks time and update_handler
+debugging
+bufferevent free crashes
 
-let main loop run, have events in descriptor data
-struct and callbacks for read/write
+existing player login hangs (does not go into nanny()) 
+
+new player login:
+Program received signal SIGSEGV, Segmentation fault.
+get_trust (ch=0x0) at handler.c:707
+707	    if ( ch->desc != NULL && ch->desc->original != NULL )
+
