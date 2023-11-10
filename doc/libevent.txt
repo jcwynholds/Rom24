@@ -3,6 +3,10 @@ Main goal
 Use libevent bufferevent instead of select
 main loop can go unblocked and just respond to bufferevents iso looping through all file descriptors
 
+used example code found in
+https://github.com/jasonish/libevent-examples/blob/master/chat-server/chat-server.c
+
+ 
 socket, structs and file descriptor definitions in merc.h 
     each callback passes descriptor_data as arg
     when constructed 
@@ -51,3 +55,7 @@ YYYYEEEESSS
 
 Now hung up on "Illegal name, try another"
 Failing name lookup check_parse_name
+YYYYEEEESSS trimming crlf in readcb helped
+now can create new characters
+
+now failing password check for existing players

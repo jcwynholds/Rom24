@@ -164,6 +164,7 @@ bool    process_output     args( ( DESCRIPTOR_DATA *d, bool fPrompt ) );
 void    read_from_buffer   args( ( DESCRIPTOR_DATA *d ) );
 void    stop_idling        args( ( CHAR_DATA *ch ) );
 void    bust_a_prompt      args( ( CHAR_DATA *ch ) );
+void    printArray         args( ( char *string ));
 
 
 int main( int argc, char **argv )
@@ -273,6 +274,8 @@ void readcb(struct bufferevent *bev, void *arg )
 			break;
 		}
 	}
+    // trim \r \n or any combination of
+    data[strcspn(data, "\r\n")] = 0;
 	strcat( d->incomm, data );
 
 	// d->character->timer = 0;
@@ -477,10 +480,10 @@ void game_tick(evutil_socket_t fd, short what, void *arg)
         }
 
 
-        if (print_debug) {
-        sprintf(log_buf, "tick %d d->host %s, d->inbuf %s\n", tick_counter, d->host, d->inbuf );
-        log_string( log_buf );
-        }
+        // if (print_debug) {
+        // sprintf(log_buf, "tick %d d->host %s, d->inbuf %s\n", tick_counter, d->host, d->inbuf );
+        // log_string( log_buf );
+        // }
 
         if ( d->incomm[0] != '\0' )
         {
@@ -1673,6 +1676,10 @@ case CON_DEFAULT_CHOICE:
 }
 
 
+void printArray(char *string)
+{
+  while (*string) fprintf(stderr, "%02x", *string++);
+}
 
 /*
  * Parse a name for acceptability.
@@ -1681,6 +1688,9 @@ bool check_parse_name( char *name )
 {
     int clan;
 
+    // print out hex values of *name and see why failing parse
+    // fprintf(stderr, "check_parse_name: %s", name);
+    // printArray(name);
     /*
      * Reserved words.
      */
