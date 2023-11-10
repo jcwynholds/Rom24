@@ -93,10 +93,6 @@ extern    int    malloc_verify    args( ( void ) );
 /*
  * Socket and TCP/IP stuff.
  */
-#include <fcntl.h>
-#include <netdb.h>
-#include <netinet/in.h>
-#include <sys/socket.h>
 #include "telnet.h"
 const    char    echo_off_str   [] = { IAC, WILL, TELOPT_ECHO, '\0' };
 const    char    echo_on_str    [] = { IAC, WONT, TELOPT_ECHO, '\0' };
@@ -112,27 +108,23 @@ const    char    go_ahead_str   [] = { IAC, GA, '\0' };
 #endif
 
 #if !defined(ntohl)
-int      accept       args( ( int s, struct sockaddr *addr, int *addrlen ) );
-int      bind         args( ( int s, struct sockaddr *name, int namelen ) );
+int      accept       args( ( int s, struct sockaddr *addr, socklen_t *addrlen ) );
+int      bind         args( ( int fd, __CONST_SOCKADDR_ARG addr, socklen_t address_len ) );
+//int      bind         ( int fd, struct sockaddr *addr, socklen_t address_len );
+
 int      close        args( ( int fd ) );
-int      fcntl        args( ( int fd, int cmd, int arg ) );
-int      getpeername  args( ( int s, struct sockaddr *name, int *namelen ) );
-int      getsockname  args( ( int s, struct sockaddr *name, int *namelen ) );
-int      gettimeofday args( ( struct timeval *tp, struct timezone *tz ) );
+int      getpeername  args( ( int s, struct sockaddr *name, socklen_t *namelen ) );
+int      getsockname  args( ( int s, struct sockaddr *name, socklen_t *namelen ) );
+int      gettimeofday args( ( struct timeval *tp, void *tz ) );
 uint16_t htons        args( ( uint16_t hostshort ) );
 int      listen       args( ( int s, int backlog ) );
 uint32_t ntohl        args( ( uint32_t hostlong ) );
-int    read           args( ( int fd, char *buf, int nbyte ) );
-int    select         args( ( int width, fd_set *readfds, fd_set *writefds,
+ssize_t  read         args( ( int fd, void *buf, size_t nbyte ) );
+int      select       args( ( int width, fd_set *readfds, fd_set *writefds,
                 fd_set *exceptfds, struct timeval *timeout ) );
-int    setsockopt     args( ( int s, int level, int optname, void *optval,
-                int optlen ) );
+int      setsockopt   ( int fd, int level, int optname, const void *optval, socklen_t optlen );
 int    socket         args( ( int domain, int type, int protocol ) );
-int    write          args( ( int fd, char *buf, int nbyte ) );
 #endif
-/* libevent */
-void   do_read(evutil_socket_t fd, short events, void *arg);
-void   do_write(evutil_socket_t fd, short events, void *arg);
 
 /*
  * Global variables.
@@ -294,7 +286,8 @@ void errorcb(struct bufferevent *bev, short error, void *arg )
     if (error & BEV_EVENT_EOF) {
         /* connection has been closed, do any clean up here */
 		log_string( "error: BEV_EVENT_EOF" );
-		close_socket( d );
+        if (d != NULL)
+		    close_socket( d );
     } else if (error & BEV_EVENT_ERROR) {
         /* check errno to see what error occurred */
 		log_string( "error: BEV_EVENT_ERROR" );
@@ -302,7 +295,8 @@ void errorcb(struct bufferevent *bev, short error, void *arg )
         log_string( log_buf );
     } else if (error & BEV_EVENT_TIMEOUT) {
 		log_string( "error: BEV_EVENT_TIMEOUT" );
-		close_socket( d );
+        if (d != NULL)
+		    close_socket( d );
     }
 }
 
@@ -330,12 +324,6 @@ void do_accept(evutil_socket_t listener, short event, void *arg)
     struct bufferevent *bev;
     evutil_make_socket_nonblocking(desc);
     bev = bufferevent_socket_new(base, desc, BEV_OPT_CLOSE_ON_FREE);
-
-    if ( fcntl( desc, F_SETFL, O_NONBLOCK ) == -1 )
-    {
-    perror( "New_descriptor: fcntl: O_NONBLOCK" );
-    return;
-    }
 
     /*
      * Cons a new descriptor.
@@ -366,10 +354,6 @@ void do_accept(evutil_socket_t listener, short event, void *arg)
         sizeof(sock.sin_addr), AF_INET );
     dnew->host = str_dup( from ? from->h_name : buf );
 
-    // libevent 
-    bufferevent_setcb(bev, readcb, writecb, errorcb, dnew );
-    bufferevent_setwatermark(bev, EV_READ, 0, MAX_STRING_LENGTH);
-    bufferevent_enable(bev, EV_READ|EV_WRITE);
     /*
      * Swiftest: I added the following to ban sites.  I don't
      * endorse banning of sites, but Copper has few descriptors now
@@ -392,6 +376,10 @@ void do_accept(evutil_socket_t listener, short event, void *arg)
     dnew->next            = descriptor_list;
     descriptor_list        = dnew;
 
+    // libevent 
+    bufferevent_setcb(bev, readcb, writecb, errorcb, dnew );
+    bufferevent_setwatermark(bev, EV_READ, 0, MAX_STRING_LENGTH);
+    bufferevent_enable(bev, EV_READ|EV_WRITE);
     /*
      * Send the greeting.
      */

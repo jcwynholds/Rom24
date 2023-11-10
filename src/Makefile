@@ -1,5 +1,5 @@
 CC      = gcc
-PROF    = -O3 -g -std=c99
+PROF    = -g -std=c99
 NOCRYPT =
 C_FLAGS =  -Wall -Wimplicit-function-declaration $(PROF) $(NOCRYPT)
 L_FLAGS =  $(PROF)
