@@ -157,6 +157,9 @@ void wiznet(char *string, CHAR_DATA *ch, OBJ_DATA *obj,
 
     for ( d = descriptor_list; d != NULL; d = d->next )
     {
+        if (d->character == NULL)
+            continue;
+
         if (d->connected == CON_PLAYING
 	&&  IS_IMMORTAL(d->character) 
 	&&  IS_SET(d->character->wiznet,WIZ_ON) 

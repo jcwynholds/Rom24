@@ -134,7 +134,8 @@ void free_descriptor(DESCRIPTOR_DATA *d)
 	return;
 
     free_string( d->host );
-    free_mem( d->outbuf, d->outsize );
+    if (d->outsize > 0)
+        free_mem( d->outbuf, d->outsize );
     INVALIDATE(d);
     d->next = descriptor_free;
     descriptor_free = d;

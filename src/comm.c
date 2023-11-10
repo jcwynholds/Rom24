@@ -122,7 +122,7 @@ uint32_t ntohl        args( ( uint32_t hostlong ) );
 ssize_t  read         args( ( int fd, void *buf, size_t nbyte ) );
 int      select       args( ( int width, fd_set *readfds, fd_set *writefds,
                 fd_set *exceptfds, struct timeval *timeout ) );
-int      setsockopt   ( int fd, int level, int optname, const void *optval, socklen_t optlen );
+int      setsockopt   args( ( int fd, int level, int optname, const void *optval, socklen_t optlen ) );
 int    socket         args( ( int domain, int type, int protocol ) );
 #endif
 
@@ -286,6 +286,8 @@ void errorcb(struct bufferevent *bev, short error, void *arg )
     if (error & BEV_EVENT_EOF) {
         /* connection has been closed, do any clean up here */
 		log_string( "error: BEV_EVENT_EOF" );
+        sprintf( log_buf, "Disconnect from host: %s", d->host );
+        log_string( log_buf );
         if (d != NULL)
 		    close_socket( d );
     } else if (error & BEV_EVENT_ERROR) {
@@ -373,8 +375,8 @@ void do_accept(evutil_socket_t listener, short event, void *arg)
     /*
      * Init descriptor data.
      */
-    dnew->next            = descriptor_list;
-    descriptor_list        = dnew;
+    dnew->next         = descriptor_list;
+    descriptor_list    = dnew;
 
     // libevent 
     bufferevent_setcb(bev, readcb, writecb, errorcb, dnew );
@@ -567,7 +569,8 @@ void close_socket( DESCRIPTOR_DATA *dclose )
         bug( "Close_socket: dclose not found.", 0 );
     }
 
-	bufferevent_free( dclose->evb );
+	if (dclose->evb !=NULL)
+        bufferevent_free( dclose->evb );
     close( dclose->descriptor );
     free_descriptor(dclose);
     return;
