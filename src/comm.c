@@ -138,6 +138,8 @@ bool                wizlock;         /* Game is wizlocked        */
 bool                newlock;         /* Game is newlocked        */
 char                str_boot_time[MAX_INPUT_LENGTH];
 time_t              current_time;    /* time of this pulse */    
+int                 tick_counter = 0;    /* number of ticks since startup */
+bool                print_debug;
 
 void    game_tick            args( ( evutil_socket_t fd, short what, void *arg ) );
 evutil_socket_t init_socket  args( ( int port ) );
@@ -271,7 +273,8 @@ void readcb(struct bufferevent *bev, void *arg )
 			break;
 		}
 	}
-	strcat( d->inbuf, data );
+	strcat( d->incomm, data );
+
 	// d->character->timer = 0;
 }
 
@@ -448,10 +451,17 @@ void game_tick(evutil_socket_t fd, short what, void *arg)
     {
     DESCRIPTOR_DATA *d;
 
+    tick_counter++;
+
+
 #if defined(MALLOC_DEBUG)
     if ( malloc_verify( ) != 1 )
         abort( );
 #endif
+    if (tick_counter % 4 == 0)
+       print_debug = TRUE;
+    else
+       print_debug = FALSE;
 
     for ( d = descriptor_list; d != NULL; d = d_next )
     {
@@ -465,8 +475,16 @@ void game_tick(evutil_socket_t fd, short what, void *arg)
         --d->character->wait;
         continue;
         }
+
+
+        if (print_debug) {
+        sprintf(log_buf, "tick %d d->host %s, d->inbuf %s\n", tick_counter, d->host, d->inbuf );
+        log_string( log_buf );
+        }
+
         if ( d->incomm[0] != '\0' )
         {
+
             d->fcommand     = TRUE;
             stop_idling( d->character );
 

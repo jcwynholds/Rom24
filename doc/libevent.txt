@@ -26,11 +26,28 @@ how to keep main loop and event_base_dispatch working
 
 debugging
 bufferevent free crashes
+^^^ fixed by checking if dclose->evb == null in close_socket
 
-existing player login hangs (does not go into nanny()) 
+-> existing player login hangs (does not go into nanny()) 
+^^^ now hangs due to different reason, 
+Program received signal SIGSEGV, Segmentation fault.
+0x00005555555bdf07 in weather_update () at update.c:592
+592		    if ( d->connected == CON_PLAYING
+^^^^ fixed by similar null check in weather_update
 
-new player login:
+
+-> new player login:
 Program received signal SIGSEGV, Segmentation fault.
 get_trust (ch=0x0) at handler.c:707
 707	    if ( ch->desc != NULL && ch->desc->original != NULL )
+^^^ fixed by wiznet if stmt if d->character == NULL continue
+now still
+hangs, no crash doesn't go into nanny()
+hanging on input.  d->incomm after login isn't getting filled
+look at readcb
+it's all in d->inbuf.  all working fine, probably set d->incomm 
+YYYYEEEESSS
 
+
+Now hung up on "Illegal name, try another"
+Failing name lookup check_parse_name
