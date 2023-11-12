@@ -223,7 +223,7 @@ int main( int argc, char **argv )
     /*
      * Run the game.
      */
-	game_tick_ev = event_new(base, -1, EV_PERSIST, game_tick, event_self_cbarg());
+	game_tick_ev = event_new(base, -1, EV_PERSIST, game_tick, base);
 	event_add(game_tick_ev, &tick_time);
     fprintf( stderr, "main() init_socket\n" );
 
@@ -296,6 +296,9 @@ void errorcb(struct bufferevent *bev, short error, void *arg )
 		log_string( "error: BEV_EVENT_ERROR" );
         sprintf( log_buf, "Err:  %d", error );
         log_string( log_buf );
+        // this below needs testing but is prolly ok
+        if (d != NULL)
+		    close_socket( d );
     } else if (error & BEV_EVENT_TIMEOUT) {
 		log_string( "error: BEV_EVENT_TIMEOUT" );
         if (d != NULL)
@@ -438,12 +441,13 @@ evutil_socket_t init_socket( int port )
     return fd;
 }
 
-// this will be timer callback once per pulse
+// timer callback once per pulse
 	// daze decrement
+    // read_from_buffer input processing
 	// update_handler
 	// process_output
 
-void game_tick(evutil_socket_t fd, short what, void *arg)
+void game_tick(evutil_socket_t fd, short what, void *basearg)
 {
     /* Main loop */
     if ( !merc_down )
@@ -476,11 +480,13 @@ void game_tick(evutil_socket_t fd, short what, void *arg)
         continue;
         }
 
-
+        /*
         if (print_debug) {
         sprintf(log_buf, "tick %d d->host %s, d->inbuf '%s' d->incomm '%s'\n", tick_counter, d->host, d->inbuf, d->incomm );
         log_string( log_buf );
         }
+        */
+
         /*
         Do canonical input processing
         old read_from_descriptor was moved to readcb which now is event based
@@ -529,6 +535,10 @@ void game_tick(evutil_socket_t fd, short what, void *arg)
         }
         }
     }
+
+    } else {
+        // MERC_DOWN
+        event_base_loopexit(basearg, NULL);
 
     }
 
@@ -1110,7 +1120,6 @@ void nanny( DESCRIPTOR_DATA *d, char *argument )
 
     if ( fOld )
     {
-        fprintf(stderr, "nanny __LINE__ host %s password '%s'\n\r", d->host, d->incomm);
         /* Old player */
         write_to_buffer( d, "Password: ", 0 );
         write_to_buffer( d, echo_off_str, 0 );
@@ -1144,7 +1153,7 @@ void nanny( DESCRIPTOR_DATA *d, char *argument )
 
     case CON_GET_OLD_PASSWORD:
     write_to_buffer( d, "\n\r", 2 );
-    fprintf(stderr, "nanny %d host %s password '%s'\n\r", __LINE__, d->host, argument);
+    fprintf(stderr, "%s %d host %s password '%s'\n\r", __FILE__ , __LINE__, d->host, argument);
     if ( strcmp( crypt( argument, ch->pcdata->pwd ), ch->pcdata->pwd ))
     {
         write_to_buffer( d, "Wrong password.\n\r", 0 );

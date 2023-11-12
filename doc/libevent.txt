@@ -60,7 +60,6 @@ Program received signal SIGSEGV, Segmentation fault.
 592		    if ( d->connected == CON_PLAYING
 ^^^^ fixed by similar null check in weather_update
 
-
 -> new player login:
 Program received signal SIGSEGV, Segmentation fault.
 get_trust (ch=0x0) at handler.c:707
@@ -107,4 +106,22 @@ and whitespace trimming et al.
 TODO:
 
 help and [Hit Return] prompts need some more tracing through input
+when player login many many player@host entries in log
+
+various vscode improvements
+- build works Ok
+    run under makefile does not
+        need to set CWD to ./area/
+- run works ok
+    launch config runs but needs more time for me to understand
+- debugging needs config
+
+code cleanup and whitespace
+
+makefile improvements
+    debug and optimized build
+    more gnu specific for targets and project changes
+
+
+
 
