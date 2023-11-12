@@ -17,3 +17,6 @@ rom: $(O_FILES)
 
 .c.o: merc.h
 	$(CC) -c $(C_FLAGS) $<
+
+run: $(O_FILES)
+	cd ../area && ./start-foreground.sh

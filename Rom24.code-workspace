@@ -1,0 +1,17 @@
+{
+	"folders": [
+		{
+			"path": "."
+		}
+	],
+	"settings": {
+		"makefile.makeDirectory": "${workspaceFolder}/src",
+		"makefile.launchConfigurations": [
+			{
+				"cwd": "/home/jan/Rom24/src",
+				"binaryPath": "/home/jan/Rom24/src/rom",
+				"binaryArgs": []
+			}
+		]
+	}
+}

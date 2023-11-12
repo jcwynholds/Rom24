@@ -38,21 +38,16 @@
  *
 ***************************************************************************/
 
-
-
 /*
  * This file contains all of the OS-dependent stuff:
  *   startup, signals, BSD sockets for tcp/ip, i/o, timing.
  *
  * The data flow for input is:
- *    Game_loop ---> Read_from_descriptor ---> Read
- *    Game_loop ---> Read_from_buffer
+ *   event callbacks read from event buffers and copy to descriptor
  *
  * The data flow for output is:
- *    Game_loop ---> Process_Output ---> Write_to_descriptor -> Write
- *
- * The OS-dependent functions are Read_from_descriptor and Write_to_descriptor.
- * -- Furey  26 Jan 1993
+ *   game_tick timer callback fires at 1 / PULSE_PER_SECOND
+ *   process_output() is called once per game_tick 
  */
 
 #include <sys/types.h>
@@ -143,8 +138,8 @@ bool                print_debug;
 
 void    game_tick            args( ( evutil_socket_t fd, short what, void *arg ) );
 evutil_socket_t init_socket  args( ( int port ) );
-bool    read_from_descriptor args( ( DESCRIPTOR_DATA *d ) );
 bool    write_to_descriptor  args( ( int desc, char *txt, int length ) );
+void    read_from_buffer     args( ( DESCRIPTOR_DATA *d ) );
 
 void    do_accept            args( (evutil_socket_t listener, short event, 
                                      void *arg) );
@@ -161,10 +156,8 @@ bool    check_playing      args( ( DESCRIPTOR_DATA *d, char *name ) );
 int     main               args( ( int argc, char **argv ) );
 void    nanny              args( ( DESCRIPTOR_DATA *d, char *argument ) );
 bool    process_output     args( ( DESCRIPTOR_DATA *d, bool fPrompt ) );
-void    read_from_buffer   args( ( DESCRIPTOR_DATA *d ) );
 void    stop_idling        args( ( CHAR_DATA *ch ) );
 void    bust_a_prompt      args( ( CHAR_DATA *ch ) );
-void    printArray         args( ( char *string ));
 
 
 int main( int argc, char **argv )
@@ -175,7 +168,7 @@ int main( int argc, char **argv )
     evutil_socket_t control;
     struct event_base *base;
 	struct event *listener_event;
-	int qtr_sec = 100000 / PULSE_PER_SECOND;
+	int qtr_sec = 1000000 / PULSE_PER_SECOND;
 	struct event *game_tick_ev;
 	struct timeval tick_time = { 0, qtr_sec };
 
@@ -275,9 +268,11 @@ void readcb(struct bufferevent *bev, void *arg )
 		}
 	}
     // trim \r \n or any combination of
-    data[strcspn(data, "\r\n")] = 0;
-	strcat( d->incomm, data );
+    // not do that, done in read_from_buffer
+    // data[strcspn(data, "\r\n")] = 0;
+	strcpy( d->inbuf, data );
 
+    // this was very wrong
 	// d->character->timer = 0;
 }
 
@@ -345,6 +340,7 @@ void do_accept(evutil_socket_t listener, short event, void *arg)
     dnew->outsize    = 2000;
     dnew->outbuf    = alloc_mem( dnew->outsize );
     dnew->host = str_dup( "(unknown)" );
+    dnew->incomm[0] = '\0';
     /*
      * Would be nice to use inet_ntoa here but it takes a struct arg,
      * which ain't very compatible between gcc and system libraries.
@@ -470,6 +466,7 @@ void game_tick(evutil_socket_t fd, short what, void *arg)
     {
         d_next = d->next;   
         d->fcommand    = FALSE;
+
         if (d->character != NULL && d->character->daze > 0)
         --d->character->daze;
 
@@ -480,16 +477,25 @@ void game_tick(evutil_socket_t fd, short what, void *arg)
         }
 
 
-        // if (print_debug) {
-        // sprintf(log_buf, "tick %d d->host %s, d->inbuf %s\n", tick_counter, d->host, d->inbuf );
-        // log_string( log_buf );
-        // }
-
+        if (print_debug) {
+        sprintf(log_buf, "tick %d d->host %s, d->inbuf '%s' d->incomm '%s'\n", tick_counter, d->host, d->inbuf, d->incomm );
+        log_string( log_buf );
+        }
+        /*
+        Do canonical input processing
+        old read_from_descriptor was moved to readcb which now is event based
+        so we let those events fire whenever and continue with
+        original input processing
+        */
+        read_from_buffer( d );
         if ( d->incomm[0] != '\0' )
         {
 
             d->fcommand     = TRUE;
             stop_idling( d->character );
+
+            // sprintf(log_buf, "tick %d d->host %s, d->incomm '%s'\n", tick_counter, d->host, d->incomm );
+            log_string( log_buf );
 
             if ( d->connected == CON_PLAYING )
                 substitute_alias( d, d->incomm );
@@ -596,172 +602,6 @@ void close_socket( DESCRIPTOR_DATA *dclose )
     free_descriptor(dclose);
     return;
 }
-
-
-
-bool read_from_descriptor( DESCRIPTOR_DATA *d )
-{
-    int iStart;
-
-    /* Hold horses if pending command already. */
-    if ( d->incomm[0] != '\0' )
-    return TRUE;
-
-    /* Check for overflow. */
-    iStart = strlen(d->inbuf);
-    if ( iStart >= sizeof(d->inbuf) - 10 )
-    {
-    sprintf( log_buf, "%s input overflow!", d->host );
-    log_string( log_buf );
-    write_to_descriptor( d->descriptor,
-        "\n\r*** PUT A LID ON IT!!! ***\n\r", 0 );
-    return FALSE;
-    }
-
-    /* Snarf input. */
-    for ( ; ; )
-    {
-    int nRead;
-
-    nRead = read( d->descriptor, d->inbuf + iStart,
-        sizeof(d->inbuf) - 10 - iStart );
-    if ( nRead > 0 )
-    {
-        iStart += nRead;
-        if ( d->inbuf[iStart-1] == '\n' || d->inbuf[iStart-1] == '\r' )
-        break;
-    }
-    else if ( nRead == 0 )
-    {
-        log_string( "EOF encountered on read." );
-        return FALSE;
-    }
-    else if ( errno == EWOULDBLOCK )
-        break;
-    else
-    {
-        perror( "Read_from_descriptor" );
-        return FALSE;
-    }
-    }
-
-    d->inbuf[iStart] = '\0';
-    return TRUE;
-}
-
-
-
-/*
- * Transfer one line from input buffer to input line.
- */
-void read_from_buffer( DESCRIPTOR_DATA *d )
-{
-    int i, j, k;
-
-    /*
-     * Hold horses if pending command already.
-     */
-    if ( d->incomm[0] != '\0' )
-    return;
-
-    /*
-     * Look for at least one new line.
-     */
-    for ( i = 0; d->inbuf[i] != '\n' && d->inbuf[i] != '\r'; i++ )
-    {
-    if ( d->inbuf[i] == '\0' )
-        return;
-    }
-
-    /*
-     * Canonical input processing.
-     */
-    for ( i = 0, k = 0; d->inbuf[i] != '\n' && d->inbuf[i] != '\r'; i++ )
-    {
-    if ( k >= MAX_INPUT_LENGTH - 2 )
-    {
-        write_to_descriptor( d->descriptor, "Line too long.\n\r", 0 );
-
-        /* skip the rest of the line */
-        for ( ; d->inbuf[i] != '\0'; i++ )
-        {
-        if ( d->inbuf[i] == '\n' || d->inbuf[i] == '\r' )
-            break;
-        }
-        d->inbuf[i]   = '\n';
-        d->inbuf[i+1] = '\0';
-        break;
-    }
-
-    if ( d->inbuf[i] == '\b' && k > 0 )
-        --k;
-    else if ( isascii(d->inbuf[i]) && isprint(d->inbuf[i]) )
-        d->incomm[k++] = d->inbuf[i];
-    }
-
-    /*
-     * Finish off the line.
-     */
-    if ( k == 0 )
-    d->incomm[k++] = ' ';
-    d->incomm[k] = '\0';
-
-    /*
-     * Deal with bozos with #repeat 1000 ...
-     */
-
-    if ( k > 1 || d->incomm[0] == '!' )
-    {
-        if ( d->incomm[0] != '!' && strcmp( d->incomm, d->inlast ) )
-    {
-        d->repeat = 0;
-    }
-    else
-    {
-        if (++d->repeat >= 25 && d->character
-        &&  d->connected == CON_PLAYING)
-        {
-        sprintf( log_buf, "%s input spamming!", d->host );
-        log_string( log_buf );
-        wiznet("Spam spam spam $N spam spam spam spam spam!",
-               d->character,NULL,WIZ_SPAM,0,get_trust(d->character));
-        if (d->incomm[0] == '!')
-            wiznet(d->inlast,d->character,NULL,WIZ_SPAM,0,
-            get_trust(d->character));
-        else
-            wiznet(d->incomm,d->character,NULL,WIZ_SPAM,0,
-            get_trust(d->character));
-
-        d->repeat = 0;
-/*
-        write_to_descriptor( d->descriptor,
-            "\n\r*** PUT A LID ON IT!!! ***\n\r", 0 );
-        strcpy( d->incomm, "quit" );
-*/
-        }
-    }
-    }
-
-
-    /*
-     * Do '!' substitution.
-     */
-    if ( d->incomm[0] == '!' )
-    strcpy( d->incomm, d->inlast );
-    else
-    strcpy( d->inlast, d->incomm );
-
-    /*
-     * Shift the input buffer.
-     */
-    while ( d->inbuf[i] == '\n' || d->inbuf[i] == '\r' )
-    i++;
-    for ( j = 0; ( d->inbuf[j] = d->inbuf[i+j] ) != '\0'; j++ )
-    ;
-    return;
-}
-
-
 
 /*
  * Low level output function.
@@ -1004,6 +844,116 @@ void bust_a_prompt( CHAR_DATA *ch )
    return;
 }
 
+/*
+ * Transfer one line from input buffer to input line.
+ */
+void read_from_buffer( DESCRIPTOR_DATA *d )
+{
+    int i, j, k;
+
+    /*
+     * Hold horses if pending command already.
+     */
+    if ( d->incomm[0] != '\0' )
+	return;
+
+    /*
+     * Look for at least one new line.
+     */
+    for ( i = 0; d->inbuf[i] != '\n' && d->inbuf[i] != '\r'; i++ )
+    {
+	if ( d->inbuf[i] == '\0' )
+	    return;
+    }
+
+    /*
+     * Canonical input processing.
+     */
+    for ( i = 0, k = 0; d->inbuf[i] != '\n' && d->inbuf[i] != '\r'; i++ )
+    {
+	if ( k >= MAX_INPUT_LENGTH - 2 )
+	{
+	    write_to_descriptor( d->descriptor, "Line too long.\n\r", 0 );
+
+	    /* skip the rest of the line */
+	    for ( ; d->inbuf[i] != '\0'; i++ )
+	    {
+		if ( d->inbuf[i] == '\n' || d->inbuf[i] == '\r' )
+		    break;
+	    }
+	    d->inbuf[i]   = '\n';
+	    d->inbuf[i+1] = '\0';
+	    break;
+	}
+
+	if ( d->inbuf[i] == '\b' && k > 0 )
+	    --k;
+	else if ( isascii(d->inbuf[i]) && isprint(d->inbuf[i]) )
+	    d->incomm[k++] = d->inbuf[i];
+    }
+
+    /*
+     * Finish off the line.
+     */
+    if ( k == 0 )
+	d->incomm[k++] = ' ';
+    d->incomm[k] = '\0';
+
+    /*
+     * Deal with bozos with #repeat 1000 ...
+     */
+
+    if ( k > 1 || d->incomm[0] == '!' )
+    {
+    	if ( d->incomm[0] != '!' && strcmp( d->incomm, d->inlast ) )
+	{
+	    d->repeat = 0;
+	}
+	else
+	{
+	    if (++d->repeat >= 25 && d->character
+	    &&  d->connected == CON_PLAYING)
+	    {
+		sprintf( log_buf, "%s input spamming!", d->host );
+		log_string( log_buf );
+		wiznet("Spam spam spam $N spam spam spam spam spam!",
+		       d->character,NULL,WIZ_SPAM,0,get_trust(d->character));
+		if (d->incomm[0] == '!')
+		    wiznet(d->inlast,d->character,NULL,WIZ_SPAM,0,
+			get_trust(d->character));
+		else
+		    wiznet(d->incomm,d->character,NULL,WIZ_SPAM,0,
+			get_trust(d->character));
+
+		d->repeat = 0;
+/*
+		write_to_descriptor( d->descriptor,
+		    "\n\r*** PUT A LID ON IT!!! ***\n\r", 0 );
+		strcpy( d->incomm, "quit" );
+*/
+	    }
+	}
+    }
+
+
+    /*
+     * Do '!' substitution.
+     */
+    if ( d->incomm[0] == '!' )
+	strcpy( d->incomm, d->inlast );
+    else
+	strcpy( d->inlast, d->incomm );
+
+    /*
+     * Shift the input buffer.
+     */
+    while ( d->inbuf[i] == '\n' || d->inbuf[i] == '\r' )
+	i++;
+    for ( j = 0; ( d->inbuf[j] = d->inbuf[i+j] ) != '\0'; j++ )
+	;
+    return;
+}
+
 
 
 /*
@@ -1160,6 +1110,7 @@ void nanny( DESCRIPTOR_DATA *d, char *argument )
 
     if ( fOld )
     {
+        fprintf(stderr, "nanny __LINE__ host %s password '%s'\n\r", d->host, d->incomm);
         /* Old player */
         write_to_buffer( d, "Password: ", 0 );
         write_to_buffer( d, echo_off_str, 0 );
@@ -1193,7 +1144,7 @@ void nanny( DESCRIPTOR_DATA *d, char *argument )
 
     case CON_GET_OLD_PASSWORD:
     write_to_buffer( d, "\n\r", 2 );
-
+    fprintf(stderr, "nanny %d host %s password '%s'\n\r", __LINE__, d->host, argument);
     if ( strcmp( crypt( argument, ch->pcdata->pwd ), ch->pcdata->pwd ))
     {
         write_to_buffer( d, "Wrong password.\n\r", 0 );
@@ -1676,11 +1627,6 @@ case CON_DEFAULT_CHOICE:
 }
 
 
-void printArray(char *string)
-{
-  while (*string) fprintf(stderr, "%02x", *string++);
-}
-
 /*
  * Parse a name for acceptability.
  */
@@ -1688,9 +1634,6 @@ bool check_parse_name( char *name )
 {
     int clan;
 
-    // print out hex values of *name and see why failing parse
-    // fprintf(stderr, "check_parse_name: %s", name);
-    // printArray(name);
     /*
      * Reserved words.
      */

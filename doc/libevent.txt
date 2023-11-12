@@ -1,7 +1,25 @@
 Main goal 
 
 Use libevent bufferevent instead of select
+
+overview
+add eventbuffer to channel descriptor
+define callbacks with channel descriptor as arg
+game_loop_unix moved to game_tick event
+this is because all the select() calls in game_loop_unix
+now needed to be handled in event_base_dispatch()
+
 main loop can go unblocked and just respond to bufferevents iso looping through all file descriptors
+^^^ this is not accurate and shows the central problem with this modification
+main loop used select() and timed blocking to sleep for tick Time
+all automata expects this cadence so the main loop is a timing
+    event to keep the cadence for automata and io processing
+
+problems
+input.  select() used fds in desc to copy input from fds
+to buffers in desc
+now need to rewrite all that input handling to take input from
+bufferevents to the right input buffers in desc
 
 used example code found in
 https://github.com/jasonish/libevent-examples/blob/master/chat-server/chat-server.c
@@ -29,7 +47,10 @@ how to keep main loop and event_base_dispatch working
 
 
 debugging
-bufferevent free crashes
+cd area && gdb --args ../src/rom 8500
+
+-> bufferevent free crashes
+
 ^^^ fixed by checking if dclose->evb == null in close_socket
 
 -> existing player login hangs (does not go into nanny()) 
@@ -53,9 +74,37 @@ it's all in d->inbuf.  all working fine, probably set d->incomm
 YYYYEEEESSS
 
 
-Now hung up on "Illegal name, try another"
+-> "Illegal name, try another"
 Failing name lookup check_parse_name
 YYYYEEEESSS trimming crlf in readcb helped
 now can create new characters
 
-now failing password check for existing players
+-> failing password check for existing players
+player receives Password: prompt and is immediately disconnected for wrongpassword
+
+think through
+player enters name 
+look up in db
+character loaded
+password is checked against ch->
+player entered password is where?
+original password is loaded with char obj and checked with crypt()
+comm.c:1198:nanny()
+strcmp( crypt( argument, ch->pcdata->pwd ), ch->pcdata->pwd )
+
+password is �� when checked
+why is d->incomm not the password when called by nanny()
+
+
+YYYYEEEESSS working now!
+
+changed input alltogether
+instead of readcb trimming newlines and adding to incomm
+readcb just copies to inbuf then in game_tick read_from_buffer
+processes all input as before (with command substitutions)
+and whitespace trimming et al.  
+
+TODO:
+
+help and [Hit Return] prompts need some more tracing through input
+

@@ -1,9 +1,17 @@
 {
-  "name": "Launch C",
+  "configurations": [
+  {
+  "name": "Run",
   "type": "cppdbg",
   "request": "launch",
   "program": "${workspaceFolder}/src/rom",
-  "args": ["8500"],
+  "args": ["9000"],
   "environment": [{ "name": "config", "value": "Debug" }],
-  "cwd": "${workspaceFolder}/area"
+  "cwd": "${workspaceFolder}/area",
+  },
+
+
+  
+  ],
+
 }

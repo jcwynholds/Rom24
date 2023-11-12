@@ -735,6 +735,7 @@ void fread_char( CHAR_DATA *ch, FILE *fp )
 
     sprintf(buf,"Loading %s.",ch->name);
     log_string(buf);
+	ch->desc->incomm[0] = '\0';
 
     for ( ; ; )
     {
