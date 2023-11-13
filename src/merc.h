@@ -118,7 +118,7 @@ typedef void SPELL_FUN	args( ( int sn, int level, CHAR_DATA *ch, void *vo,
 #define	MAX_KEY_HASH		 1024
 #define MAX_STRING_LENGTH	 4608
 #define MAX_INPUT_LENGTH	  256
-#define PAGELEN			   22
+#define PAGELEN			   52
 
 
 
@@ -1928,91 +1928,7 @@ extern		char			log_buf		[];
 extern		TIME_INFO_DATA		time_info;
 extern		WEATHER_DATA		weather_info;
 
-/*
- * OS-dependent declarations.
- * These are all very standard library functions,
- *   but some systems have incomplete or non-ansi header files.
- */
-#if	defined(_AIX)
 char *	crypt		args( ( const char *key, const char *salt ) );
-#endif
-
-#if	defined(apollo)
-int	atoi		args( ( const char *string ) );
-void *	calloc		args( ( unsigned nelem, size_t size ) );
-char *	crypt		args( ( const char *key, const char *salt ) );
-#endif
-
-#if	defined(hpux)
-char *	crypt		args( ( const char *key, const char *salt ) );
-#endif
-
-char *	crypt		args( ( const char *key, const char *salt ) );
-
-#if	defined(macintosh)
-#define NOCRYPT
-#if	defined(unix)
-#undef	unix
-#endif
-#endif
-
-#if	defined(MIPS_OS)
-char *	crypt		args( ( const char *key, const char *salt ) );
-#endif
-
-#if	defined(MSDOS)
-#define NOCRYPT
-#if	defined(unix)
-#undef	unix
-#endif
-#endif
-
-#if	defined(NeXT)
-char *	crypt		args( ( const char *key, const char *salt ) );
-#endif
-
-#if	defined(sequent)
-char *	crypt		args( ( const char *key, const char *salt ) );
-int	fclose		args( ( FILE *stream ) );
-int	fprintf		args( ( FILE *stream, const char *format, ... ) );
-int	fread		args( ( void *ptr, int size, int n, FILE *stream ) );
-int	fseek		args( ( FILE *stream, long offset, int ptrname ) );
-void	perror		args( ( const char *s ) );
-int	ungetc		args( ( int c, FILE *stream ) );
-#endif
-
-#if	defined(sun)
-char *	crypt		args( ( const char *key, const char *salt ) );
-int	fclose		args( ( FILE *stream ) );
-int	fprintf		args( ( FILE *stream, const char *format, ... ) );
-#if	defined(SYSV)
-siz_t	fread		args( ( void *ptr, size_t size, size_t n, 
-			    FILE *stream) );
-#elif !defined(__SVR4)
-int	fread		args( ( void *ptr, int size, int n, FILE *stream ) );
-#endif
-int	fseek		args( ( FILE *stream, long offset, int ptrname ) );
-void	perror		args( ( const char *s ) );
-int	ungetc		args( ( int c, FILE *stream ) );
-#endif
-
-#if	defined(ultrix)
-char *	crypt		args( ( const char *key, const char *salt ) );
-#endif
-
-
-
-/*
- * The crypt(3) function is not available on some operating systems.
- * In particular, the U.S. Government prohibits its export from the
- *   United States to foreign countries.
- * Turn on NOCRYPT to keep passwords in plain text.
- */
-#if	defined(NOCRYPT)
-#define crypt(s1, s2)	(s1)
-#endif
-
-
 
 /*
  * Data files used by the server.

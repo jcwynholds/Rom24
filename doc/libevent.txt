@@ -106,6 +106,8 @@ and whitespace trimming et al.
 TODO:
 
 help and [Hit Return] prompts need some more tracing through input
+[Hit Return to continue]
+long lists like spells get cut off
 when player login many many player@host entries in log
 
 various vscode improvements

@@ -537,7 +537,8 @@ void game_tick(evutil_socket_t fd, short what, void *basearg)
     }
 
     } else {
-        // MERC_DOWN
+        // merc_down
+        // basearg == event_base defined in main()
         event_base_loopexit(basearg, NULL);
 
     }
@@ -1124,6 +1125,8 @@ void nanny( DESCRIPTOR_DATA *d, char *argument )
         write_to_buffer( d, "Password: ", 0 );
         write_to_buffer( d, echo_off_str, 0 );
         d->connected = CON_GET_OLD_PASSWORD;
+        sprintf( log_buf, "%s@%s has connected.", ch->name, d->host );
+        log_string( log_buf );
         return;
     }
     else
@@ -1153,7 +1156,8 @@ void nanny( DESCRIPTOR_DATA *d, char *argument )
 
     case CON_GET_OLD_PASSWORD:
     write_to_buffer( d, "\n\r", 2 );
-    fprintf(stderr, "%s %d host %s password '%s'\n\r", __FILE__ , __LINE__, d->host, argument);
+    // debugging only
+    // fprintf(stderr, "%s %d host %s password '%s'\n\r", __FILE__ , __LINE__, d->host, argument);
     if ( strcmp( crypt( argument, ch->pcdata->pwd ), ch->pcdata->pwd ))
     {
         write_to_buffer( d, "Wrong password.\n\r", 0 );
@@ -1169,8 +1173,8 @@ void nanny( DESCRIPTOR_DATA *d, char *argument )
     if ( check_reconnect( d, ch->name, TRUE ) )
         return;
 
-    sprintf( log_buf, "%s@%s has connected.", ch->name, d->host );
-    log_string( log_buf );
+    // sprintf( log_buf, "%s@%s has connected.", ch->name, d->host );
+    // log_string( log_buf );
     wiznet(log_buf,NULL,NULL,WIZ_SITES,0,get_trust(ch));
 
     if ( IS_IMMORTAL(ch) )
