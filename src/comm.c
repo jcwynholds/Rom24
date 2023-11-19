@@ -449,12 +449,15 @@ evutil_socket_t init_socket( int port )
 
 void game_tick(evutil_socket_t fd, short what, void *basearg)
 {
+    struct timeval now_time;
     /* Main loop */
     if ( !merc_down )
     {
     DESCRIPTOR_DATA *d;
 
     tick_counter++;
+    gettimeofday( &now_time, NULL );
+    current_time     = (time_t) now_time.tv_sec;
 
 
 #if defined(MALLOC_DEBUG)
@@ -1269,7 +1272,7 @@ void nanny( DESCRIPTOR_DATA *d, char *argument )
     }
 
     pwdnew = crypt( argument, ch->name );
-    sprintf( log_buf, "%s new password.", pwdnew );
+    sprintf( log_buf, "%s %s new password.", pwdnew, ch->name );
     for ( p = pwdnew; *p != '\0'; p++ )
     {
         if ( *p == '~' )

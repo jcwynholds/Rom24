@@ -24,6 +24,13 @@ bufferevents to the right input buffers in desc
 used example code found in
 https://github.com/jasonish/libevent-examples/blob/master/chat-server/chat-server.c
 
+
+other muds:
+https://github.com/avinson/rom24-quickmud
+https://dtmud.tripod.com/resource.htm
+https://itbacon.com/tag/rom/
+
+
  
 socket, structs and file descriptor definitions in merc.h 
     each callback passes descriptor_data as arg
@@ -105,10 +112,30 @@ and whitespace trimming et al.
 
 TODO:
 
+current problems
+
 help and [Hit Return] prompts need some more tracing through input
 [Hit Return to continue]
-long lists like spells get cut off
+long lists show one page then repeat "Hit Return"
+    set default scroll to 52 to help, but need to get the real thing solved
+    definitely input related, the inbuf/outbuf wrt showstr_head/showstr_point
+
 when player login many many player@host entries in log
+    both password prompt and connection success logs repeat
+    maybe problem with tick firing several times with players 
+        going into nanny() w state CON_GET_OLD_PASSWORD
+
+windows telnet disconnected on name
+    maybe /r/n or line endings?
+
+compiler warnings
+    implicit declaration
+    unused variables
+    unguarded if else needs brackets
+    buffer overrun for printf's 
+    format errors (uint vs int in printf)
+
+OTHER TODO
 
 various vscode improvements
 - build works Ok
@@ -124,6 +151,39 @@ makefile improvements
     debug and optimized build
     more gnu specific for targets and project changes
 
+
+
+testing improvements
+    python script that can emulate players
+        fire n number of testing players
+        player Creation
+        existing players
+        emotes and info
+        fighting and spells
+        
+        goal is load testing
+
+    area room player mob object loader and editor
+
+    area syntax check and room traversal check
+
+    area map maker w graphviz maybe
+
+
+
+player manual
+    find any online?
+    mud school quickstart?
+
+immortal manual
+    running quest 
+    quest items  
+    
+general docs improvements
+    new spells skills races classes guilds multi-class howtos
+    debugging with gdb
+
+more internet searching for existing resources for all above
 
 
 
