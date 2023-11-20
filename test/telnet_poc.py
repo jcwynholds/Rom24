@@ -7,12 +7,8 @@ import threading
 import re
 
 # this is still a proof of concept
-# it's not working
-# Need to understand await/asyncio better
-# it's ugly and procedural
-# need to break it out to sequenced challenge/responce
-# need to figure out wait on this until state emulating syncronous action
-#    e.g have to enter player name before password
+# it's somewhat working
+# see sequenced challenge/response in login_player for reference
 
 
 # finite state automata
@@ -32,21 +28,16 @@ import re
 #   repeat
 # disconnect after timer pops
 
-#all_players = {
-#    "Abrazak": "qwerty",
-#    "Bannyboy": "qwerty",
-#    "Borkeez": "qwerty"
-#}
-
 all_players = {
     "Abrazak": "qwerty",
+    "Bannyboy": "qwerty",
+    "Borkeez": "qwerty"
 }
-avail_players = {}
 
-def choose_player():
-    # need some locking for threads
-    # return avail_players.popitem()
-    return all_players.popitem()
+#all_players = {
+#    "Abrazak": "qwerty",
+#}
+avail_players = {}
 
 async def login_player(player, reader, writer):
     login_rules = {
@@ -85,11 +76,10 @@ async def disconnect(reader, writer):
     writer.close()
     return
 
-async def do_loop():
+async def do_loop(plyr):
     # connect via telnet and wait on chained async actions
     # todo ooda loop
     read, write = await telnetlib3.open_connection(host='localhost', port=4000)
-    plyr = choose_player()
     res = await login_player(plyr, read, write)
     if res != 0:
         return
@@ -106,9 +96,10 @@ async def main():
     print(f"len avail_pl {len(avail_players)}")
     # while len(avail_players) > 0:
     # todo iterate over players here
-    if True:
-        print(f"thr st avail_players {avail_players}")
-        thing = await do_loop()
+    for k, v in all_players.items():
+        plyr = (k,v)
+        print(f"thr st plyr {plyr}")
+        thing = await do_loop(plyr)
     print("end main")
 
 asyncio.run(main())
