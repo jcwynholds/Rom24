@@ -6,6 +6,14 @@ import telnetlib3
 import threading
 import re
 
+# this is still a proof of concept
+# it's not working
+# Need to understand await/asyncio better
+# it's ugly and procedural
+# need to break it out to sequenced challenge/responce
+# need to figure out wait on this until state emulating syncronous action
+#    e.g have to enter player name before password
+
 
 # finite state automata
 # telnet_connection -> choose_player -> login_player -> read_motd -> reset_to_mse -> ooda_loop -> disconnect
@@ -35,31 +43,38 @@ all_players = {
 }
 avail_players = {}
 
-async def telnet_connection(host, port):
-    reader, writer = await telnetlib3.open_connection(host, port)
-    return reader, writer
-
 def choose_player():
     # need some locking for threads
     # return avail_players.popitem()
     return all_players.popitem()
 
 async def login_player(player, reader, writer):
-    try:
-        response = await asyncio.wait_for(reader.read(4096), timeout=.300)
-        writer.write(player[0])
-        response = await asyncio.wait_for(reader.read(4096), timeout=.300)
-        writer.write(player[1])
-    except asyncio.exceptions.TimeoutError:
-        return -1
-    return
+    login_rules = {
+        'known?': 'player[0]',
+        'Password:': 'player[1]' 
+    }
+    keys_matched = set(login_rules.keys())
+    print(f"login_rules {login_rules}")
+
+    while len(keys_matched) > 0:
+        try:
+            response = await asyncio.wait_for(reader.read(4096), timeout=.300)
+            for k, v in login_rules.items():
+                prompt, action = k, eval(v)
+                if re.search(str(prompt), response, re.MULTILINE):
+                    writer.write(action + "\n")
+                    keys_matched.discard(k)
+        except asyncio.exceptions.TimeoutError:
+            return -1
+    return 0
+
+
 
 async def read_motd(reader, writer):
     try:
         response = await asyncio.wait_for(reader.read(4096), timeout=.300)
         writer.write('\n')
         response = await asyncio.wait_for(reader.read(4096), timeout=.300)
-        writer.write('\n')
         writer.write('\n')
     except asyncio.exceptions.TimeoutError:
         return -1
@@ -71,22 +86,28 @@ async def disconnect(reader, writer):
     return
 
 async def do_loop():
+    # connect via telnet and wait on chained async actions
+    # todo ooda loop
     read, write = await telnetlib3.open_connection(host='localhost', port=4000)
     plyr = choose_player()
-    login_player(plyr, read, write)
-
-    read_motd(read, write)
-    time.sleep(1.0)
+    res = await login_player(plyr, read, write)
+    if res != 0:
+        return
+    res = await read_motd(read, write)
+    if res != 0:
+        return
+    asyncio.sleep(1)
     disconnect(read, write)
 
 async def main():
     print("start main")
     avail_players = all_players.items()
-    print("avail_players %s" % avail_players)
-    print("len avail_pl %d" % len(avail_players))
+    print(f"avail_players {avail_players}")
+    print(f"len avail_pl {len(avail_players)}")
     # while len(avail_players) > 0:
+    # todo iterate over players here
     if True:
-        print("thread st players %s" % avail_players )
+        print(f"thr st avail_players {avail_players}")
         thing = await do_loop()
     print("end main")
 
