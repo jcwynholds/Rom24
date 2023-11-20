@@ -11,11 +11,9 @@ import re
 # see sequenced challenge/response in login_player for reference
 
 # finite state automata
-# telnet_connection -> choose_player -> login_player -> read_motd -> reset_to_mse -> ooda_loop -> disconnect
+# do_loop -> login_player -> read_motd -> reset_to_mse -> ooda_loop -> disconnect
 # goal #1 mud school and level 5
-# threading object starts fsa
-# telnet_connection returns telnetlib object
-# choose_player reads from available players and returns name/password pair
+# do_loop is await'ed sequence of functions
 # login_player does login chat and returns logged in player object
 # read_motd reads messages writes to stdout
 # reset_to_mse resets the character into known room
@@ -39,8 +37,6 @@ async def login_player(player, reader, writer):
         'Password:': 'player[1]' 
     }
     keys_matched = set(login_rules.keys())
-    print(f"login_rules {login_rules}")
-
     while len(keys_matched) > 0:
         try:
             response = await asyncio.wait_for(reader.read(4096), timeout=.300)
@@ -52,8 +48,6 @@ async def login_player(player, reader, writer):
         except asyncio.exceptions.TimeoutError:
             return -1
     return 0
-
-
 
 async def read_motd(reader, writer):
     try:
