@@ -10,7 +10,6 @@ import re
 # it's somewhat working
 # see sequenced challenge/response in login_player for reference
 
-
 # finite state automata
 # telnet_connection -> choose_player -> login_player -> read_motd -> reset_to_mse -> ooda_loop -> disconnect
 # goal #1 mud school and level 5
@@ -33,11 +32,6 @@ all_players = {
     "Bannyboy": "qwerty",
     "Borkeez": "qwerty"
 }
-
-#all_players = {
-#    "Abrazak": "qwerty",
-#}
-avail_players = {}
 
 async def login_player(player, reader, writer):
     login_rules = {
@@ -90,15 +84,8 @@ async def do_loop(plyr):
     disconnect(read, write)
 
 async def main():
-    print("start main")
-    avail_players = all_players.items()
-    print(f"avail_players {avail_players}")
-    print(f"len avail_pl {len(avail_players)}")
-    # while len(avail_players) > 0:
-    # todo iterate over players here
     for k, v in all_players.items():
         plyr = (k,v)
-        print(f"thr st plyr {plyr}")
         thing = await do_loop(plyr)
     print("end main")
 
