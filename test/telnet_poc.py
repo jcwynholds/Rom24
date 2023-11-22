@@ -1,9 +1,7 @@
 #!/usr/bin/env python3
 
-import time
 import asyncio
 import telnetlib3
-import threading
 import re
 
 # this is still a proof of concept
@@ -60,6 +58,7 @@ async def read_motd(reader, writer):
     return
 
 async def disconnect(reader, writer):
+    writer.write('quit\n')
     reader.close()
     writer.close()
     return
