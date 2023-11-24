@@ -120,11 +120,6 @@ long lists show one page then repeat "Hit Return"
     set default scroll to 52 to help, but need to get the real thing solved
     definitely input related, the inbuf/outbuf wrt showstr_head/showstr_point
 
-when player login many many player@host entries in log
-    both password prompt and connection success logs repeat
-    maybe problem with tick firing several times with players 
-        going into nanny() w state CON_GET_OLD_PASSWORD
-
 windows telnet disconnected on name
     maybe /r/n or line endings?
 

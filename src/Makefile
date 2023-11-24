@@ -1,7 +1,7 @@
 CC      = gcc
 # when debugging add -g
 # PROF    = -g
-PROF    = -O3 -m64
+PROF    = -O3 -m64 -g
 NOCRYPT =
 C_FLAGS =  -std=c99 -Wall -Wimplicit-function-declaration $(PROF) $(NOCRYPT)
 L_FLAGS =  $(PROF)

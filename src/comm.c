@@ -267,13 +267,7 @@ void readcb(struct bufferevent *bev, void *arg )
 			break;
 		}
 	}
-    // trim \r \n or any combination of
-    // not do that, done in read_from_buffer
-    // data[strcspn(data, "\r\n")] = 0;
 	strcpy( d->inbuf, data );
-
-    // this was very wrong
-	// d->character->timer = 0;
 }
 
 void writecb(struct bufferevent *bev, void *arg )
@@ -311,11 +305,21 @@ void do_accept(evutil_socket_t listener, short event, void *arg)
     struct event_base *base = arg;
 
     char buf[MAX_STRING_LENGTH];
+    char host_string[MAX_STRING_LENGTH];
     DESCRIPTOR_DATA *dnew;
     struct sockaddr_in sock;
     socklen_t size = sizeof(sock);
     struct hostent *from;
     int desc;
+
+    sprintf( log_buf, "event on socket %d:%s%s%s%s",
+        (int) listener,
+        (event&EV_TIMEOUT) ? " timeout" : "",
+        (event&EV_READ)    ? " read" : "",
+        (event&EV_WRITE)   ? " write" : "",
+        (event&EV_SIGNAL)  ? " signal" : "");
+    log_string( log_buf );
+
 
     if ( ( desc = accept( listener, (struct sockaddr *) &sock, &size) ) < 0 )
     {
@@ -326,6 +330,20 @@ void do_accept(evutil_socket_t listener, short event, void *arg)
 	perror( "New_descriptor: fd > FD_SETSIZE" );
 	return;
     }
+    /*
+     * Would be nice to use inet_ntoa here but it takes a struct arg,
+     * which ain't very compatible between gcc and system libraries.
+     */
+    int addr, port;
+    addr = ntohl( sock.sin_addr.s_addr );
+    sprintf( buf, "%d.%d.%d.%d",
+        ( addr >> 24 ) & 0xFF, ( addr >> 16 ) & 0xFF,
+        ( addr >>  8 ) & 0xFF, ( addr       ) & 0xFF
+        );
+    port = ntohs( sock.sin_port );
+    sprintf( log_buf, "new socket: %d %s:%d", desc, buf, port );
+    log_string( log_buf );
+
     // libevent
     struct bufferevent *bev;
     evutil_make_socket_nonblocking(desc);
@@ -344,23 +362,12 @@ void do_accept(evutil_socket_t listener, short event, void *arg)
     dnew->outbuf    = alloc_mem( dnew->outsize );
     dnew->host = str_dup( "(unknown)" );
     dnew->incomm[0] = '\0';
-    /*
-     * Would be nice to use inet_ntoa here but it takes a struct arg,
-     * which ain't very compatible between gcc and system libraries.
-     */
-    int addr;
+    dnew->evb = bev;
 
-    addr = ntohl( sock.sin_addr.s_addr );
-    sprintf( buf, "%d.%d.%d.%d",
-        ( addr >> 24 ) & 0xFF, ( addr >> 16 ) & 0xFF,
-        ( addr >>  8 ) & 0xFF, ( addr       ) & 0xFF
-        );
-    sprintf( log_buf, "Sock.sinaddr:  %s", buf );
-    log_string( log_buf );
     from = gethostbyaddr( (char *) &sock.sin_addr,
         sizeof(sock.sin_addr), AF_INET );
-    dnew->host = str_dup( from ? from->h_name : buf );
-
+    sprintf(host_string, "%s:%d\0", (from ? from->h_name : buf), port);
+    dnew->host = str_dup( host_string );
     /*
      * Swiftest: I added the following to ban sites.  I don't
      * endorse banning of sites, but Copper has few descriptors now
@@ -450,10 +457,13 @@ evutil_socket_t init_socket( int port )
 void game_tick(evutil_socket_t fd, short what, void *basearg)
 {
     struct timeval now_time;
+    // time_t start_sec;
+    // start_sec     = (time_t) start_time.tv_sec;
     /* Main loop */
     if ( !merc_down )
     {
     DESCRIPTOR_DATA *d;
+    int tmp = 0;
 
     tick_counter++;
     gettimeofday( &now_time, NULL );
@@ -464,15 +474,27 @@ void game_tick(evutil_socket_t fd, short what, void *basearg)
     if ( malloc_verify( ) != 1 )
         abort( );
 #endif
-    if (tick_counter % 4 == 0)
+    if (tick_counter % 40 == 0)
        print_debug = TRUE;
     else
        print_debug = FALSE;
+    /*
+    if (print_debug) {
+    sprintf(log_buf, "tick %d tmp %d time %ld", tick_counter, tmp, current_time );
+    log_string( log_buf );
+    }
+    */
 
     for ( d = descriptor_list; d != NULL; d = d_next )
     {
+        gettimeofday( &now_time, NULL );
+        current_time     = (time_t) now_time.tv_sec;
+        tmp++;
         d_next = d->next;   
         d->fcommand    = FALSE;
+
+        //if (start_sec != current_time)
+        //    return;
 
         if (d->character != NULL && d->character->daze > 0)
         --d->character->daze;
@@ -485,6 +507,11 @@ void game_tick(evutil_socket_t fd, short what, void *basearg)
 
         /*
         if (print_debug) {
+        sprintf(log_buf, "tick %d tmp %d time %ld d->descriptor %d d->connected %d", tick_counter, tmp, current_time, d->descriptor, d->connected );
+        log_string( log_buf );
+        log_buf[0] = '\0';
+        }
+        if (print_debug) {
         sprintf(log_buf, "tick %d d->host %s, d->inbuf '%s' d->incomm '%s'\n", tick_counter, d->host, d->inbuf, d->incomm );
         log_string( log_buf );
         }
@@ -492,7 +519,7 @@ void game_tick(evutil_socket_t fd, short what, void *basearg)
 
         /*
         Do canonical input processing
-        old read_from_descriptor was moved to readcb which now is event based
+        // old read_from_descriptor was moved to readcb which now is event based
         so we let those events fire whenever and continue with
         original input processing
         */
@@ -504,7 +531,7 @@ void game_tick(evutil_socket_t fd, short what, void *basearg)
             stop_idling( d->character );
 
             // sprintf(log_buf, "tick %d d->host %s, d->incomm '%s'\n", tick_counter, d->host, d->incomm );
-            log_string( log_buf );
+            // log_string( log_buf );
 
             if ( d->connected == CON_PLAYING )
                 substitute_alias( d, d->incomm );
@@ -1130,6 +1157,7 @@ void nanny( DESCRIPTOR_DATA *d, char *argument )
         d->connected = CON_GET_OLD_PASSWORD;
         sprintf( log_buf, "%s@%s has connected.", ch->name, d->host );
         log_string( log_buf );
+        log_buf[0] = '\0';
         return;
     }
     else
@@ -1164,6 +1192,10 @@ void nanny( DESCRIPTOR_DATA *d, char *argument )
     if ( strcmp( crypt( argument, ch->pcdata->pwd ), ch->pcdata->pwd ))
     {
         write_to_buffer( d, "Wrong password.\n\r", 0 );
+        log_buf[0] = '\0';
+        sprintf(log_buf, "Failed password for %s@%s", ch->name, ch->desc->host );
+        log_string( log_buf );
+        log_buf[0] = '\0';
         close_socket( d );
         return;
     }
