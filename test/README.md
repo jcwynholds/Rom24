@@ -16,21 +16,23 @@ Current Problems
 Only one player per connection.  Player creation is hard to automate and track.  New player login and play needs work.
 
 Player creation and tracking needs:
-- multithread/multiprocess locking (only one player per connection)
+x[done] multithread/multiprocess locking (only one player per connection)
+    - note: not multithread or multiprocess but async/await'ed coroutines
 - storage of player name and password
+    - python dict now
 - something easy to load/store like sqlite or python pickle
 - 
 
 Old player login:
 - picking player and locking
-- getting to proper place for good mobs
+- area selection and navigation
 - evaluating mobs
 - maximizing silver and experience points
 
 New player creation:
 - easy is to pick defaults and go
 - harder is random picks
-- hardest is solver for local minima
+- hardest is solver for local minima (most eff. sp+sk for least points)
 - load/store player for locking
 
 Automata
