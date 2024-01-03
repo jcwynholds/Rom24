@@ -114,6 +114,12 @@ TODO:
 
 current problems
 
+windows telnet
+    linux telnet sends crlf terminated string as a packet
+    windows telnet sends each char as separate packets then crlf
+    this does work with og code using select()
+    check input loop - check that each char as packet is appended to ch->inbuf
+
 help and [Hit Return] prompts need some more tracing through input
 [Hit Return to continue]
 long lists show one page then repeat "Hit Return"
@@ -129,6 +135,9 @@ compiler warnings
     unguarded if else needs brackets
     buffer overrun for printf's 
     format errors (uint vs int in printf)
+
+tick_time has no jitter and is purely 1/PULSE_PER_SECOND
+    change to every second PULSE_PER_SECOND ticks scheduled with randomized jitter
 
 OTHER TODO
 

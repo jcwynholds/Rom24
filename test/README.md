@@ -1,7 +1,7 @@
 Testing for Rom
 ===============
 
-Here's some basic python tests for rom24.  The goal now is to do load testing for profiling network response.
+Here's some basic python tests for rom24.  The goal now is to do load testing and profiling with 100+ players.
 
 Goal is something like apachebench to fire up 10-500 players to emulate a popping mud.
 
@@ -9,6 +9,7 @@ Using asyncio in python for brevity and ease.
 
 Mvp is pre-created level 1 player able to login and look for mobs in mud school.
 
+Directories contain a few scripts with similar requirements.txt.
 
 Current Problems
 ================

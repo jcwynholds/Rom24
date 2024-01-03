@@ -258,6 +258,7 @@ void readcb(struct bufferevent *bev, void *arg )
 	struct descriptor_data *d = arg;
 	char data[MAX_INPUT_LENGTH];
 	size_t n;
+    int bufsz, sz;
 
 	/* Read MAX_INPUT_LENGTH at a time */
 	for (;;) {
@@ -267,7 +268,18 @@ void readcb(struct bufferevent *bev, void *arg )
 			break;
 		}
 	}
-	strcpy( d->inbuf, data );
+    /*
+    If client sends 'string\r\n' strcpy works fine
+    win client sends one char per packet then 2 char packet /r/n
+
+    if 1 or 2 char read append
+    else strcpy
+    */
+    sz = strlen(data);
+    if ((sz==1) || (sz==2))
+        strcat( d->inbuf, data );
+    else
+	    strcpy( d->inbuf, data );
 }
 
 void writecb(struct bufferevent *bev, void *arg )
@@ -1093,6 +1105,8 @@ void nanny( DESCRIPTOR_DATA *d, char *argument )
     argument++;
 
     ch = d->character;
+    // debugging only
+    fprintf(stderr, "%s %d host %s arg '%s'\n\r", __FILE__ , __LINE__, d->host, argument);
 
     switch ( d->connected )
     {
@@ -1188,7 +1202,7 @@ void nanny( DESCRIPTOR_DATA *d, char *argument )
     case CON_GET_OLD_PASSWORD:
     write_to_buffer( d, "\n\r", 2 );
     // debugging only
-    // fprintf(stderr, "%s %d host %s password '%s'\n\r", __FILE__ , __LINE__, d->host, argument);
+    // fprintf(stderr, "%s %d host %s arg '%s'\n\r", __FILE__ , __LINE__, d->host, argument);
     if ( strcmp( crypt( argument, ch->pcdata->pwd ), ch->pcdata->pwd ))
     {
         write_to_buffer( d, "Wrong password.\n\r", 0 );
